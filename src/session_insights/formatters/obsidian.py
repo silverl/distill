@@ -337,6 +337,9 @@ class ObsidianFormatter:
         if cycle is not None:
             lines.append(f"- **Cycle:** {cycle}")
         lines.append(f"- **Outcome:** {outcome}")
+        quality_rating = cycle_info.quality_rating if cycle_info else None
+        if quality_rating:
+            lines.append(f"- **Quality:** {quality_rating}")
 
         if session.task_description:
             lines.append("")

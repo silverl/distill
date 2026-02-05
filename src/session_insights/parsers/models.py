@@ -105,6 +105,7 @@ class CycleInfo(BaseModel):
     workflow_id: str | None = None
     task_name: str | None = None
     outcome: str = "unknown"
+    quality_rating: str | None = None
 
 
 class QualityAssessment(BaseModel):

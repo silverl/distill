@@ -94,6 +94,7 @@ class VermasSession(BaseSession):
     cycle: int | None = None
     workflow_id: str | None = None
     outcome: str = "unknown"  # completed, approved, blocked, done, in_progress
+    quality_rating: str | None = None
     mission_info: MissionInfo | None = None
     recaps: list[RecapFile] = Field(default_factory=list)
 
@@ -107,6 +108,7 @@ class VermasSession(BaseSession):
                 workflow_id=self.workflow_id,
                 task_name=self.task_name,
                 outcome=self.outcome,
+                quality_rating=self.quality_rating,
             )
 
     @property
@@ -228,13 +230,17 @@ class VermasParser:
         # Determine outcome
         outcome = self._determine_outcome(signals)
 
-        # Get task description
+        # Get mission info (before task_description so we can use it as fallback)
+        mission_info = self._get_mission_info(vermas_dir, mission_id)
+
+        # Get task description with fallback chain
         task_description = self._get_task_description(
             vermas_dir, mission_id, task_name
         )
-
-        # Get mission info
-        mission_info = self._get_mission_info(vermas_dir, mission_id)
+        if not task_description and mission_info and mission_info.description:
+            task_description = mission_info.description
+        if not task_description and task_name:
+            task_description = task_name.replace("-", " ").capitalize()
 
         # Get improvements related to this mission
         improvements = self._get_mission_improvements(vermas_dir, mission_id)
@@ -244,6 +250,9 @@ class VermasParser:
 
         # Get recap files
         recaps = self._get_recaps(vermas_dir, mission_id, task_name)
+
+        # Determine quality rating from outcome
+        quality_rating = self._determine_quality_rating(outcome, signals)
 
         return VermasSession(
             session_id=workflow_id,
@@ -262,6 +271,7 @@ class VermasParser:
             learnings=agent_learnings,
             recaps=recaps,
             summary=self._generate_summary(signals, outcome, task_name, start_time, end_time),
+            quality_rating=quality_rating,
         )
 
     def _parse_workflow_id(
@@ -425,6 +435,24 @@ class VermasParser:
             return "needs_revision"
 
         return "in_progress"
+
+    def _determine_quality_rating(
+        self, outcome: str, signals: list[AgentSignal]
+    ) -> str:
+        """Determine quality rating from outcome and signals.
+
+        Ratings: excellent, good, fair, poor, unknown.
+        """
+        if outcome in ("completed", "approved"):
+            has_needs_revision = any(s.signal == "needs_revision" for s in signals)
+            return "good" if has_needs_revision else "excellent"
+        elif outcome == "done":
+            return "good"
+        elif outcome == "needs_revision":
+            return "fair"
+        elif outcome == "blocked":
+            return "poor"
+        return "unknown"
 
     def _get_task_description(
         self, vermas_dir: Path, mission_id: str | None, task_name: str | None
