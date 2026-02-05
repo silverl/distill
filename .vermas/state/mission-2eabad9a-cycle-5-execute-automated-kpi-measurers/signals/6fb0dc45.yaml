@@ -1,0 +1,14 @@
+agent_id: d3842c9e
+created_at: '2026-02-05T19:53:41.991944'
+message: 'QA found requirement gaps: note_content_richness should run CLI + parse
+  generated note files (current code formats sessions directly), and vermas_task_visibility
+  should parse generated notes (current code checks BaseSession fields). Also timestamp
+  check uses `start_time:` which doesn''t exist in Obsidian notes. Tests: `pytest
+  tests/measurers -q` failed (missing pytest-cov), `pytest -q -o addopts='''' tests/measurers`
+  failed (PYTHONPATH not set), `PYTHONPATH=src pytest -q -o addopts='''' tests/measurers`
+  passed (38).'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 6fb0dc45
+workflow_id: mission-2eabad9a-cycle-5-execute-automated-kpi-measurers

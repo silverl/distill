@@ -1,19 +1,16 @@
 agents:
   general:
     learnings:
-    - "Dev agent responded effectively to QA's needs_revision signal, producing 849\
-      \ LOC of comprehensive integration tests covering all 4 requested areas (rich\
-      \ content, VerMAS fields, Claude fields, exit codes) in a single revision cycle\
-      \ \u2014 demonstrating the dev-QA feedback loop works when QA provides specific,\
-      \ actionable feedback."
-    - "QA agent correctly identified the initial empty worktree state and provided\
-      \ a detailed list of missing test coverage areas, then verified the revision\
-      \ met all requirements before approving \u2014 showing disciplined review that\
-      \ neither rubber-stamps nor blocks unnecessarily."
-    - The watcher/merge agent continues to produce artifact-only commits that strip
-      source files, operating as a silent failure point that neither dev nor QA can
-      detect until post-merge review. This agent's merge logic is the root cause of
-      the project's largest systemic issue.
+    - "The dev agent initially submitted incomplete work missing 6 required fields,\
+      \ but responded to QA feedback quickly (under 6 minutes) and delivered a complete\
+      \ solution on the second attempt \u2014 suggesting dev agents benefit from explicit\
+      \ field checklists in task descriptions."
+    - The QA agent performed thorough structural review, verifying not just that tests
+      passed but that specific required fields were present in the model definition
+      and that downstream modules (formatter, imports) were updated correctly.
+    - This was the first workflow in 8 attempts to successfully land code on main
+      without merge-drops-source failure, suggesting the direct-commit-to-main approach
+      (vs branch-then-merge) is more reliable for the current agent toolchain.
     strengths: []
     weaknesses: []
     best_practices: []

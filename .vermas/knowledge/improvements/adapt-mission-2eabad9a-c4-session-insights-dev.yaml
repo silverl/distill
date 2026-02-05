@@ -1,0 +1,28 @@
+id: adapt-mission-2eabad9a-c4-session-insights-dev
+date: '2026-02-05T13:39:02.898478'
+type: workflow_change
+target: workflow/session-insights-dev
+change: "Cycle 4 proved the mission is viable (30% -> 68% KPI jump) when tasks target\
+  \ the right stack layer. The primary bottleneck is now note_content_richness at\
+  \ 0%, which requires formatter/renderer work \u2014 not more parser work. The current\
+  \ workflow's KPI section still says 'note_content_richness: 0% \u2014 CRITICAL'\
+  \ but doesn't direct agents specifically toward the formatter layer, which is where\
+  \ the gap actually is (parsers are complete per cycle-3-6 learning). Additionally:\
+  \ (1) remove the deprecated flag since this is the active workflow, (2) update KPI\
+  \ baselines to reflect cycle 4 progress, (3) add explicit guidance to NOT work on\
+  \ parser layer (it's done), (4) add negative-path testing requirement for cli_runs_clean,\
+  \ (5) increase reviewer timeout from 15m to 20m to allow thorough review of formatter\
+  \ code which touches multiple output paths."
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.68
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

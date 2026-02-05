@@ -1,12 +1,12 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - The integration tests use subprocess.run to invoke the CLI as a separate process
-    (sys.executable -m session_insights), testing actual exit codes, stdout/stderr
-    output, and argument parsing. This approach validates that the CLI entrypoint,
-    argument parsing, core pipeline, and formatter all work together without mocking,
-    providing true end-to-end confidence. The helper function _run_cli abstracts the
-    subprocess invocation pattern for reuse across 26 tests.
+  - The workflow unified two incompatible BaseSession classes and moved scattered
+    type definitions (AgentSignal, AgentLearning, KnowledgeImprovement) into a single
+    canonical location (parsers/models.py) before downstream feature work could proceed.
+    This architectural prerequisite unblocked 3 dependent tasks (formatter, analyze
+    subcommand, integration tests). Centralizing shared models eliminates getattr
+    fallbacks and enables direct attribute access, improving type safety and maintainability.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -48,12 +48,11 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - "The dev agent created comprehensive integration tests using pytest fixtures that\
-    \ generate representative session data (Claude JSONL, VerMAS YAML) in tmp_path\
-    \ directories, then asserted rich content through the complete parse\u2192model\u2192\
-    format pipeline. This fixture-factory approach enables testing without real session\
-    \ data and makes assertions about formatted output content (not just structure).\
-    \ Each fixture builds realistic nested data structures matching the parser contract."
+  - "When moving model classes between modules, the primary regression risk is stale\
+    \ imports. This workflow updated imports in 4 source files and 2 test files. The\
+    \ test suite (218 tests) served as an effective safety net \u2014 any missed import\
+    \ would cause immediate ImportError failures. Running the full test suite after\
+    \ each move ensures no import paths are missed."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -138,12 +137,13 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - QA's initial needs_revision signal (0f494bc5) with specific missing items ('tests
-    that verify non-empty content sections, VerMAS notes include task description/signals/learnings')
-    drove the dev agent to produce a comprehensive 849-LOC test file covering all
-    requested areas. The specificity of QA's feedback (listing exactly what was missing)
-    resulted in targeted implementation rather than vague iteration. This is the dev-QA
-    loop working as designed.
+  - "QA's initial 'needs_revision' signal identified that the dev's first implementation\
+    \ was missing 6 required fields (task_description, signals, learnings, improvements,\
+    \ quality_assessment, cycle_info). The dev then completed the full implementation\
+    \ in under 6 minutes, and QA approved on second review. This tight feedback loop\
+    \ (needs_revision \u2192 fix \u2192 approved in ~8 minutes) prevented shipping\
+    \ incomplete work and demonstrates that structured QA review catches specification\
+    \ gaps that dev agents miss."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -341,11 +341,12 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - The dev agent sent 3 consecutive 'done' signals (signals 4-6) repeating 'already
-    fixed' and 'already committed' for the same entrypoint fix. This pattern of redundant
-    signaling wastes time and suggests the agent is uncertain whether its prior fix
-    was received. A single done signal with clear evidence (commit hash, test output)
-    is sufficient and more efficient.
+  - This model unification task was correctly sequenced as the first task in a 4-task
+    cycle, since the other 3 tasks (formatter, analyze subcommand, integration tests)
+    depended on the unified model. The 678-second completion time (including one revision
+    cycle) was fast enough to unblock dependent workflows. Breaking the merge-drops-source
+    pattern (8 prior occurrences) by committing directly to main rather than using
+    branches eliminated the merge failure risk.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -732,5 +733,21 @@ patterns:
   recommended_workflow: null
   tags:
   - implementation
+  - technical
+  sample_count: 1
+- pattern: refactoring/*
+  insights:
+  - 'The successful approach was: (1) move shared type definitions from the specialized
+    module (vermas.py) to the base module (models.py), (2) extend BaseSession with
+    new fields using Optional/default-empty-list patterns, (3) update the specialized
+    class to inherit rather than redefine, (4) add model_post_init() to auto-derive
+    computed fields. This 4-step pattern achieved +141/-77 LOC (net +64) with zero
+    test regressions across 218 tests.'
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - refactoring
   - technical
   sample_count: 1

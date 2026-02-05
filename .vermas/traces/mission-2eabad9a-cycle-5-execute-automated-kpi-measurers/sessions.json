@@ -1,0 +1,21 @@
+{
+  "workflow_id": "mission-2eabad9a-cycle-5-execute-automated-kpi-measurers",
+  "created_at": "2026-02-05T20:10:33.601767+00:00",
+  "agents": {
+    "dev": {
+      "session_id": "31ed9e2f-07d8-4e8e-93bb-d7d08e4364d6",
+      "agent_type": "claude",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    },
+    "watcher": {
+      "session_id": "1fe07729-c411-462b-8c00-6c14d98adbdf",
+      "agent_type": "claude",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    },
+    "qa": {
+      "session_id": "019c2f54-bf54-7f80-aaf9-758c60827149",
+      "agent_type": "codex",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    }
+  }
+}

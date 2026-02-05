@@ -20,42 +20,33 @@ states:
       with an explanation. Do not execute tasks that only improve infrastructure
       without moving a metric.
 
-      KPIs (current status):
-      - note_content_richness: 0% — CRITICAL, primary bottleneck
-      - vermas_task_visibility: partial
-      - cli_runs_clean: partial
+      KPIs (updated after cycle 4 — 68% overall):
+      - note_content_richness: 0% — CRITICAL, #1 priority
+      - vermas_task_visibility: 65% — needs edge-case handling
+      - cli_runs_clean: 85% — needs negative-path tests
       - obsidian_compatibility: on track
 
       MANDATORY PRIORITY: note_content_richness
-      This KPI has had ZERO movement across all cycles. If any pending task
-      targets note_content_richness (especially the analyze subcommand), you
-      MUST pick it up before working on any other task. The analyze subcommand
-      is the single highest-leverage item: it directly impacts both
-      note_content_richness and vermas_task_visibility simultaneously.
+      This KPI has had ZERO movement across all cycles. The PARSER layer is
+      COMPLETE AND STABLE (confirmed cycle 3-6). Do NOT modify parsers.
+      The gap is in the FORMATTER/RENDERER layer: parsed data exists but is not
+      being translated into rich note output. Specifically wire these fields:
+      - Timestamps (formatted correctly)
+      - Durations (calculated from start/end)
+      - Agent interactions (with sufficient detail)
+      - Task metadata (status, outcomes)
 
-      EXECUTION STALL PRE-CHECK (do this BEFORE starting work):
-      List all pending tasks. If there are pending tasks and none are in_progress,
-      immediately pick up the highest-priority pending task. Do not wait for
-      external triggers. Execution stalls are a scheduling problem — if work
-      exists and you are idle, start working.
+      For vermas_task_visibility tasks:
+      Older VerMAS session formats in .vermas/state/ may have structural
+      differences (metadata fields, naming conventions) not yet handled.
+      Investigate legacy format structure before assuming parser bugs.
 
-      PRIORITY ORDER:
-      1. note_content_richness (0% — this is the #1 priority)
-         The analyze subcommand must produce rich, structured content from
-         session data. Implement content extraction, summarization, and
-         formatting logic — not just stubs.
-      2. vermas_task_visibility (partial)
-      3. cli_runs_clean (partial)
-      4. obsidian_compatibility (on track — maintain, don't regress)
-
-      CLI DECOMPOSITION PATTERN (required for all CLI work):
-      This pattern has produced zero failures across multiple cycles. For any
-      CLI-related task, decompose into three layers:
-      1. Argument parsing — Click decorators, parameter validation
-      2. Dispatch — routing from CLI entry point to business logic
-      3. Logic — pure functions that transform data, independently testable
-      Implement and test each layer separately. Do NOT build monolithic CLI
-      handlers.
+      For cli_runs_clean tasks:
+      Happy path is solid. Focus on NEGATIVE-PATH testing:
+      - Malformed inputs
+      - Missing directories
+      - Permission errors
+      - Unexpected file formats
 
       Follow Python best practices:
       - Use Pydantic v2 for models
@@ -69,8 +60,8 @@ states:
       If tests fail, fix them before signaling.
 
       Signal "done" when implementation is complete and tests pass.
-      Signal "blocked" if you encounter infrastructure issues.
-
+      Signal "blocked" if you encounter infrastructure issues or cannot
+      identify which KPI this task advances.
     on_signal:
       done:
         from: engineer
@@ -84,24 +75,26 @@ states:
 
   reviewing:
     instructions: |
-      Review the engineer's implementation for the session-insights CLI tool.
+      Review the implementation for correctness and quality.
 
-      REVIEW CHECKLIST:
-      1. Does the implementation move at least one KPI? Check specifically:
-         - Does it advance note_content_richness? (highest priority)
-         - Are there actual content extraction/formatting implementations,
-           not just stubs or pass-through functions?
-      2. CLI decomposition: Is the code separated into parsing, dispatch,
-         and logic layers? Reject monolithic CLI handlers.
-      3. Test coverage: Are there tests for the logic layer independent of
-         CLI invocation?
-      4. Does `uv run pytest tests/ -x -q` pass?
+      Verification steps:
+      1. Read all changed files
+      2. Run full test suite with coverage
+      3. Test CLI manually if applicable
+      4. Check for edge cases and error handling
 
-      Focus on functional correctness and KPI impact.
-      Signal "approved" if the code is correct, tested, and advances a KPI.
-      Signal "needs_revision" with specific feedback if changes are needed.
-      Signal "blocked" if you cannot review due to infrastructure issues.
+      CRITICAL REVIEW CHECKS:
+      - If the task targets note_content_richness: verify that the formatter
+        actually renders the claimed fields (timestamps, durations, agent
+        interactions, task metadata) into the output. Do not approve if
+        parsed data is available but not surfaced in rendered notes.
+      - If the task targets cli_runs_clean: verify negative-path tests exist
+        (malformed input, missing dirs, permission errors).
+      - Verify no parser modifications were made unless explicitly required
+        by the task — the parser layer is stable and should not be touched.
 
+      Signal "approved" if quality is acceptable.
+      Signal "needs_revision" with specific feedback if changes needed.
     on_signal:
       approved:
         from: reviewer
@@ -109,20 +102,17 @@ states:
       needs_revision:
         from: reviewer
         next: engineering
-      blocked:
-        from: reviewer
-        next: blocked
     timeout:
-      duration: 15m
+      duration: 20m
       action: nudge
 
   finalize:
+    type: terminal
     on_entry:
       - action: commit
-    type: terminal
 
   blocked:
+    type: terminal
     on_entry:
       - action: log
-        message: "Workflow blocked - environment validation failed or infrastructure issue"
-    type: terminal
+        message: Workflow blocked - task does not advance any KPI or infrastructure issue encountered
