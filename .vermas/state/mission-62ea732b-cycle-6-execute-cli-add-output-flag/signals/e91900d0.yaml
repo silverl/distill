@@ -1,0 +1,8 @@
+agent_id: c05c04f5
+created_at: '2026-02-05T14:40:49.672180'
+message: QA approved; signaling complete per request.
+metadata: null
+role: qa
+signal: complete
+signal_id: e91900d0
+workflow_id: mission-62ea732b-cycle-6-execute-cli-add-output-flag
