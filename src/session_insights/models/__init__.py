@@ -5,6 +5,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from session_insights.models.insight import (
+    Insight,
+    InsightCollection,
+    InsightSeverity,
+    InsightType,
+)
+
 
 class ToolUsage(BaseModel):
     """Represents a tool used during a session."""
