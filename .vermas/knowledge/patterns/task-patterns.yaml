@@ -1,16 +1,16 @@
 patterns:
 - pattern: testing/*
   insights:
-  - QA couldn't verify coverage because pytest-cov wasn't installed in their environment.
-    Dev reported 99% coverage but QA had to approve based on trust, not verification.
-    Agent environments should have consistent test dependencies.
+  - Running pytest without --all-extras failed due to missing pytest-cov dependency
+    from pyproject.toml addopts. Using 'uv run --all-extras pytest' ensures all optional
+    test dependencies are available, preventing false failures in CI/QA verification.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - process
+  - technical
   sample_count: 1
 - pattern: architecture/*
   insights:
@@ -69,12 +69,12 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - When agents fail to register with the workflow within a timeout period, the orchestrator
-    should detect this early and log clear error messages. The root cause of this
-    failure was agents never registering - checking tmux pane status after spawn could
-    provide visibility into spawn failures.
+  - The workflow completed in ~9 minutes with two dev-QA cycles. Each QA rejection
+    included specific actionable feedback (exact error message, missing files, failing
+    test command), and each dev signal included quantifiable proof (test counts, coverage
+    percentage). This tight feedback loop enabled fast convergence.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -163,4 +163,32 @@ patterns:
   tags:
   - validation
   - process
+  sample_count: 1
+- pattern: code-design/*
+  insights:
+  - When a parser needs to handle multiple file formats (JSONL and JSON array/object),
+    extracting format detection into a private _load_entries() method keeps the main
+    parsing logic clean. The method auto-detects format and normalizes to a consistent
+    data structure for downstream processing.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - code-design
+  - technical
+  sample_count: 1
+- pattern: parser-implementation/*
+  insights:
+  - When parsing JSON files that may come from different sources, support common wrapper
+    patterns (objects with 'messages', 'entries', or 'conversation' keys) in addition
+    to direct arrays. This makes the parser resilient to variations in how tools export
+    session data.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - parser-implementation
+  - technical
   sample_count: 1

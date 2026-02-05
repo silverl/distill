@@ -1,15 +1,12 @@
 agents:
   general:
     learnings:
-    - Dev agent demonstrated effective forensic debugging by investigating worktree
-      contents of a prior 'failed' mission before starting new work, discovering completed
-      code that just needed committing
-    - QA agent caught subtle issues (untracked test files, unjustified pragmas) that
-      dev missed, demonstrating value of the review cycle even when dev reports high
-      coverage
-    - Dev responded to QA feedback comprehensively in one revision cycle, addressing
-      all 4 concerns (git add, justification comments, 7 new edge case tests, verification)
-      without multiple back-and-forth
+    - Dev agent responded quickly to QA feedback, implementing JSON format support
+      with 4 additional tests in under 5 minutes after revision request
+    - QA agent correctly identified the missing implementation in first review (files
+      not present) rather than just running tests, showing proper verification order
+    - QA agent provided precise error messages ('list' object has no attribute 'get')
+      that pinpointed exact failure mode, enabling targeted fix
     strengths: []
     weaknesses: []
     best_practices: []
