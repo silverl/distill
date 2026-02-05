@@ -1,0 +1,14 @@
+agent_id: 6c353182
+created_at: '2026-02-05T19:16:29.400056'
+message: 'Added 26 new integration tests in tests/integration/test_full_pipeline.py.
+  All 244 tests pass at 92% coverage (target: 90%). Tests cover: (1) Claude full pipeline
+  - messages, tool_calls, tool usage summaries, outcomes, conversation in formatted
+  notes; (2) VerMAS full pipeline - signals, task description, agent learnings, improvements,
+  outcome derivation; (3) Mixed sources pipeline; (4) Analyze subcommand - exit codes
+  0/1, clean runs, source/date filtering, help. Also fixed coverage omit patterns
+  for worktree context.'
+metadata: null
+role: dev
+signal: done
+signal_id: 981bf3ff
+workflow_id: mission-2eabad9a-cycle-4-execute-integration-tests-full-pipeline

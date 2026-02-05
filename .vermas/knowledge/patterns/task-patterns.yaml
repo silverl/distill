@@ -16,12 +16,12 @@ patterns:
   sample_count: 1
 - pattern: git-workflow/*
   insights:
-  - 'When code exists in git worktrees but was never committed to main, recover it
-    by: (1) copying files from worktree to main, (2) running tests to verify functionality,
-    (3) using ''git add'' explicitly on each deliverable file, (4) verifying tracking
-    with ''git ls-files --error-unmatch'', (5) committing with descriptive message
-    referencing the original action item IDs. This workflow recovered 2000+ lines
-    of parser code (VerMAS: 830 lines, Codex: 514 lines) plus 1793 lines of tests.'
+  - The pattern shows completion commits (c9e60c9) are created as new commits on main
+    that cherry-pick only artifacts, rather than merge commits that incorporate the
+    full task branch. A proper git merge --no-ff of the task branch would preserve
+    all source changes. The successful C1-new cycle used this approach (merge commit
+    6eec1c4 brought 56e97f6's code to main). The workflow should enforce 'git merge
+    --no-ff task-branch' as the completion step.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -47,18 +47,18 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - "Dev anticipated the test failures QA later flagged (include_conversation default\
-    \ behavior) and fixed them before the first done signal by using include_conversation=False\
-    \ in relevant tests. This proactive approach meant QA's needs_revision was actually\
-    \ a false alarm \u2014 the dev had already addressed the concern. Writing tests\
-    \ alongside implementation catches interface mismatches early."
+  - 'The branch reported 240 tests passing while main has only 218. The 22-test gap
+    (test_core_stats.py: 170 LOC, additional e2e and cli tests) represents lost test
+    coverage. The workflow reports ''success'' based on branch state but the deliverable
+    never reaches main. Future workflows should verify test counts on main after the
+    completion commit, not on the task branch.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - technical
+  - process
   sample_count: 1
 - pattern: code-recovery/*
   insights:
@@ -381,17 +381,18 @@ patterns:
   sample_count: 1
 - pattern: workflow-signals/*
   insights:
-  - Both dev and QA used descriptive signal messages explaining exactly what was done
-    or what needed revision. QA's 'needs_revision' messages specified the exact discrepancy
-    ('Click default vs spec'), allowing dev to fix precisely without back-and-forth
-    clarification.
+  - The pre-signal-check.sh script (fixed in 33f3b78 to check HEAD~1..HEAD) still
+    cannot detect when a completion commit omits source changes that exist on the
+    task branch. It only checks if the latest commit has source diffs vs main, not
+    whether the task branch's source changes were included. A new check comparing
+    'git diff main..task-branch -- src/ tests/' would catch this.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - workflow-signals
-  - process
+  - technical
   sample_count: 1
 - pattern: discovery/*
   insights:
@@ -711,4 +712,20 @@ patterns:
   tags:
   - workflow-automation
   - process
+  sample_count: 1
+- pattern: implementation/*
+  insights:
+  - The dev agent produced a well-structured analyze subcommand with compute_richness_score(),
+    compute_field_coverage(), --stats-only flag for JSON output, and comprehensive
+    tests (+327 LOC tests across 3 files). The implementation follows established
+    patterns (Typer + Rich) and properly handles edge cases (UTC normalization, file
+    vs directory input, unparseable sessions). This quality of work is wasted when
+    it doesn't reach main.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - implementation
+  - technical
   sample_count: 1

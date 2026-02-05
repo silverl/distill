@@ -1,18 +1,16 @@
 agents:
   general:
     learnings:
-    - 'Dev agent was highly effective at implementation: +375 LOC of genuine code
-      with 232 tests passing at 99% coverage on the formatter module. Dev proactively
-      addressed edge cases (message truncation, max 5 questions, include_conversation
-      flag) before QA review.'
-    - "QA agent provided fast, specific feedback (21 seconds after dev's done signal)\
-      \ identifying two concrete test names and a dependency issue. However, the flagged\
-      \ issues turned out to already be fixed \u2014 suggesting QA may have analyzed\
-      \ code statically without running all tests first, then corrected after verification."
-    - "Watcher/merge agent continues to be the systemic failure point: it creates\
-      \ artifact-only commits on main while the real code sits on task branches. This\
-      \ is the 6th documented occurrence and the core blocker for the project \u2014\
-      \ all the dev and QA quality is wasted if code never reaches main."
+    - Dev agent produces high-quality code consistently - the analyze subcommand implementation
+      (+611 LOC with comprehensive tests) demonstrates strong technical execution.
+      The failure is purely in the merge/delivery step, not in code quality.
+    - 'The workflow''s ''watcher'' agent failed to catch the merge-drops-source issue
+      despite this being documented as the #1 systemic problem. Either the watcher
+      lacks the tooling to verify main branch state post-completion, or its checks
+      are insufficient.'
+    - QA agent's review framework (from prior cycles) correctly identifies this pattern
+      when reviewing, but the detection happens post-hoc rather than preventing the
+      issue. Moving the check to a pre-signal gate would be more effective.
     strengths: []
     weaknesses: []
     best_practices: []
