@@ -1,0 +1,23 @@
+id: adapt-mission-64ee338c-c2-session-insights-dev
+date: '2026-02-05T02:25:02.094400'
+type: workflow_change
+target: workflow/session-insights-dev
+change: 'The workflow currently jumps directly to engineering without validating the
+  environment. Evidence shows 100% failure rate over 2 cycles with ''setup-project-structure''
+  failing 3+ times. Learnings explicitly require diagnostic checks before directory
+  creation: (1) verify cwd, (2) check write permissions, (3) check for conflicting
+  files. Adding a mandatory ''diagnose'' state that MUST pass before engineering can
+  proceed. This addresses the root cause identified in learnings.'
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.0
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

@@ -1,0 +1,7 @@
+agents:
+- cli: claude
+  role: scaffolder
+- cli: codex
+  role: verifier
+name: session-insights-scaffold
+workflow: ''

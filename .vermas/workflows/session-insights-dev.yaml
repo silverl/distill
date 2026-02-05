@@ -12,30 +12,36 @@ states:
 
   validate:
     instructions: |
-      Before implementing anything, validate the execution environment.
+      CRITICAL: Before implementing ANYTHING, validate the execution environment.
+      This validation MUST pass before any implementation work begins.
       
-      Run these checks IN ORDER and report any failures:
+      Run these checks IN ORDER and report ALL failures:
       
       1. Verify Python environment:
          `uv run python --version`
          Expected: Python 3.11 or higher
       
       2. Verify project structure exists:
-         - Check if pyproject.toml exists
+         - Check if pyproject.toml exists in the project root
          - Check if src/ directory exists
-         - If pyproject.toml is missing, this project needs setup first
+         - If pyproject.toml is missing, signal "blocked" immediately
       
       3. Verify dependencies can be installed:
          `uv sync`
+         If this fails, signal "blocked" with the error message
       
       4. Verify pytest works:
          `uv run pytest --version`
       
+      5. Run a trivial test to prove execution works:
+         `uv run python -c "print('Environment OK')"`
+      
       If ALL checks pass, signal "done".
       
       If ANY check fails:
-      - Report the specific failure in your signal message
-      - Signal "blocked" with details about what failed
+      - Report the SPECIFIC error message in your signal
+      - Signal "blocked" - do NOT proceed to implementation
+      - Include diagnostic info: which step failed, the exact error output
     on_signal:
       done:
         from: engineer
@@ -44,12 +50,15 @@ states:
         from: engineer
         next: blocked
     timeout:
-      duration: 5m
-      action: fail
+      duration: 10m
+      action: escalate
 
   engineering:
     instructions: |
       Implement the assigned task for the session-insights CLI tool.
+      
+      IMPORTANT: If you encounter any environment or tooling errors, 
+      signal "blocked" immediately with the error details. Do not retry.
       
       Follow Python best practices:
       - Use Pydantic v2 for models
@@ -60,10 +69,8 @@ states:
       Run tests before signaling done:
       `uv run pytest tests/ -x -q`
       
-      If tests fail, fix them before signaling.
-      
       Signal "done" when implementation is complete and tests pass.
-      Signal "blocked" if you encounter infrastructure issues.
+      Signal "blocked" if you encounter infrastructure or environment issues.
     on_signal:
       done:
         from: engineer
@@ -102,7 +109,7 @@ states:
     type: terminal
     on_entry:
       - action: log
-        message: "Workflow blocked - environment validation failed or infrastructure issue"
+        message: Workflow blocked - environment validation failed or infrastructure issue detected. Manual intervention required.
 
   finalize:
     type: terminal

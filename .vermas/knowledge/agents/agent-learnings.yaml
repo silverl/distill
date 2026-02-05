@@ -1,12 +1,13 @@
 agents:
   general:
     learnings:
-    - Dev agent completed implementation with 50 passing tests and detailed completion
-      signal - good performance
-    - QA agent successfully identified substantive issues (entrypoint config, discovery
-      logic) but died after signaling needs_revision
-    - QA death occurred after productive review work, suggesting tmux session instability
-      rather than agent task failure
+    - Dev agent executed for 12 minutes before failing, suggesting it was actively
+      working when the process died rather than being stuck or blocked
+    - No signals or intermediate progress were captured, indicating the agent may
+      not have reached any checkpoint or signaling point before death
+    - The 'implement-claude-parser' task was already marked as done in a previous
+      cycle, suggesting this was a redundant re-execution that may have conflicted
+      with existing work
     strengths: []
     weaknesses: []
     best_practices: []

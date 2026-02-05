@@ -1,12 +1,12 @@
 patterns:
 - pattern: testing/*
   insights:
-  - 50 unit tests passed but the CLI entrypoint was broken - the console_scripts entry
-    in pyproject.toml pointed to a Typer callback function instead of the app object.
-    Integration testing of the actual installed CLI command (not just function calls)
-    is essential to catch configuration issues.
+  - Test suite uses temporary directories with pytest fixtures to create realistic
+    directory hierarchies (temp_dir fixture). Tests cover standard .claude structure,
+    sessions/ subdirectory, mixed locations, and both .json and .jsonl extensions,
+    ensuring parser handles all real-world variations.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -15,10 +15,9 @@ patterns:
   sample_count: 1
 - pattern: architecture/*
   insights:
-  - Use Click's @click.group() decorator to create a main command that serves as a
-    container for subcommands. This provides clean --help output, --version support,
-    and extensible command structure. Each subcommand gets its own function with @main.command()
-    decorator.
+  - Parser uses multiple glob patterns (*.jsonl, *.json) to discover session files,
+    and checks both direct locations and conventional subdirectories (sessions/).
+    This pattern ensures backward compatibility while supporting evolving file structures.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -29,24 +28,23 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - 'The QA agent correctly identified two substantive issues: (1) the console script
-    entrypoint pointed to a callback function that doesn''t produce help output, and
-    (2) discover_sessions incorrectly scanned .claude directory for codex sources
-    instead of .codex. This demonstrates QA''s value in catching integration-level
-    bugs that unit tests miss.'
+  - QA agent identified that parser only handled direct .jsonl files, missing the
+    real Claude directory structure (.claude/projects/*/sessions/*.json). This demonstrates
+    the value of domain-aware QA review that tests against actual usage patterns rather
+    than just API contracts.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - code-review
-  - technical
+  - process
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - 'When signaling task completion, include: list of files created/modified, specific
-    commands run to verify (e.g., ''uv run session-insights --help''), and test pass
-    counts. This gives QA concrete verification steps and creates documentation.'
+  - 'Workflow completed successfully via quick iteration: dev signaled done (4 tests
+    from QA gap), QA sent needs_revision with specific file:line reference, dev fixed
+    in 2 minutes and re-signaled done, QA approved. Total revision cycle under 5 minutes.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -98,17 +96,16 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - QA agents should verify file existence independently of git status. Clean git
-    status can mask uncommitted work that exists in the worktree. When reporting 'no
-    implementation found', check both 'git status' AND file existence with ls/stat
-    to provide accurate feedback.
+  - When using git worktrees for parallel development, pytest can pick up wrong module
+    from another worktree's sys.path. QA agent discovered that explicit PYTHONPATH=src
+    or editable install is required to ensure tests use the correct worktree's code.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - debugging
-  - process
+  - technical
   sample_count: 1
 - pattern: python/*
   insights:
@@ -123,4 +120,46 @@ patterns:
   tags:
   - python
   - technical
+  sample_count: 1
+- pattern: agent-lifecycle/*
+  insights:
+  - Workflows running over 10 minutes need active heartbeat monitoring to detect agent
+    death before the full timeout. The dev agent died without signaling, causing the
+    workflow to fail silently. Implementing periodic heartbeat checks (every 60-120
+    seconds) would allow earlier detection and potential agent restart.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - agent-lifecycle
+  - process
+  sample_count: 1
+- pattern: task-recovery/*
+  insights:
+  - When an agent dies mid-task, all progress is lost if no intermediate commits exist.
+    Agents should checkpoint progress by committing partial work frequently (every
+    significant change), enabling workflow resumption from the last checkpoint rather
+    than restarting from scratch.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - task-recovery
+  - process
+  sample_count: 1
+- pattern: validation/*
+  insights:
+  - The improvement logs indicate adding a 'validate' state before 'engineering' helps
+    isolate environment/setup issues from implementation issues. Running a single-agent
+    validation step first proves the execution environment works before spawning multiple
+    agents, reducing complex failure modes.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - validation
+  - process
   sample_count: 1

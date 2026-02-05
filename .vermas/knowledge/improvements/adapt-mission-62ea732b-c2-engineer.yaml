@@ -1,0 +1,21 @@
+id: adapt-mission-62ea732b-c2-engineer
+date: '2026-02-05T02:24:55.707762'
+type: other
+target: agent/engineer
+change: 'The engineer agent lacks guidance on: 1) Handling failed tasks (RCA requirement),
+  2) Verifying dependencies before working on dependent tasks, 3) Knowing when to
+  signal blocked vs attempting fixes. Evidence shows cascading failures between parser/analyze-command
+  and no RCA before retrying. Adding explicit dependency checking and RCA requirements.'
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.25
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

@@ -1,0 +1,21 @@
+{
+  "workflow_id": "mission-f68b8b88-cycle-3-execute-implement-codex-parser",
+  "created_at": "2026-02-05T08:50:20.323158+00:00",
+  "agents": {
+    "dev": {
+      "session_id": "31ed9e2f-07d8-4e8e-93bb-d7d08e4364d6",
+      "agent_type": "claude",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    },
+    "watcher": {
+      "session_id": "1fe07729-c411-462b-8c00-6c14d98adbdf",
+      "agent_type": "claude",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    },
+    "qa": {
+      "session_id": "019c2cf6-a03f-7042-bda5-5299f27dfd69",
+      "agent_type": "codex",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    }
+  }
+}

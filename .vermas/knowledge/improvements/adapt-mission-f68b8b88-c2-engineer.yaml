@@ -1,0 +1,21 @@
+id: adapt-mission-f68b8b88-c2-engineer
+date: '2026-02-05T02:27:14.027998'
+type: other
+target: agent/engineer
+change: The engineer agent lacks guidance on what to do when the environment is broken.
+  Adding explicit instructions to signal 'blocked' immediately on infrastructure failures
+  (rather than retrying or working around) will improve failure detection. Also adding
+  the expectation that environment validation comes first.
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.0
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

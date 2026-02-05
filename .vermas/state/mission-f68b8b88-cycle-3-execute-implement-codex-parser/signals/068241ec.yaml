@@ -1,0 +1,10 @@
+agent_id: 2ab043df
+created_at: '2026-02-05T08:43:29.841183'
+message: 'QA review: codex parser implementation and tests are missing. No src/session_insights/parsers/codex.py
+  or tests/parsers/test_codex.py present; requirements not met. Tests also fail to
+  run in this env due to missing deps and pytest-cov addopts.'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 068241ec
+workflow_id: mission-f68b8b88-cycle-3-execute-implement-codex-parser

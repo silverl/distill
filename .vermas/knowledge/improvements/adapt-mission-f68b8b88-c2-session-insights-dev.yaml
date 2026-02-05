@@ -1,0 +1,24 @@
+id: adapt-mission-f68b8b88-c2-session-insights-dev
+date: '2026-02-05T02:27:14.027249'
+type: workflow_change
+target: workflow/session-insights-dev
+change: The workflow currently jumps directly to engineering without validating the
+  environment. Both cycles failed with 100% task failure rate because the execution
+  environment was broken. Adding a mandatory 'validate' state that must pass before
+  any implementation work begins will catch infrastructure issues early and prevent
+  wasted cycles. The validate state includes explicit health checks for Python, uv,
+  project structure, and pytest - all prerequisites that must work before implementation
+  can succeed.
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.0
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

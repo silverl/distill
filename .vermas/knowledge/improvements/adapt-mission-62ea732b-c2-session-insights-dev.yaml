@@ -1,0 +1,22 @@
+id: adapt-mission-62ea732b-c2-session-insights-dev
+date: '2026-02-05T02:24:55.706743'
+type: workflow_change
+target: workflow/session-insights-dev
+change: 'The workflow lacks: 1) A validation state to catch environment issues that
+  caused 100% failure in cycle 1, 2) A blocked state for graceful failure handling,
+  3) RCA requirements before retrying failed work. Evidence shows repeated failures
+  without root cause investigation. Adding validation upfront and blocked state addresses
+  the ''fundamental execution blockers'' identified in cycle 1.'
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.25
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

@@ -24,12 +24,25 @@ Build clean, well-tested Python code following modern best practices.
 - pytest for testing
 - uv for package management
 
+## CRITICAL: Environment Issues
+If you encounter ANY of these, signal "blocked" IMMEDIATELY with the error:
+- `uv` command not found or failing
+- Python version mismatch
+- Missing pyproject.toml
+- Failed dependency installation
+- pytest not working
+- Permission errors
+
+Do NOT retry failed commands. Do NOT work around infrastructure issues.
+Report them and signal "blocked" so they can be fixed at the root.
+
 ## Your Responsibilities
-1. Implement features according to specifications
-2. Write unit tests for all code (90%+ coverage target)
-3. Follow DDD patterns - separate domain models from infrastructure
-4. Use type hints throughout
-5. Keep functions focused and testable
+1. Validate environment works BEFORE implementing anything
+2. Implement features according to specifications
+3. Write unit tests for all code (90%+ coverage target)
+4. Follow DDD patterns - separate domain models from infrastructure
+5. Use type hints throughout
+6. Keep functions focused and testable
 
 ## Code Standards
 - Use Pydantic models for data structures
@@ -38,24 +51,12 @@ Build clean, well-tested Python code following modern best practices.
 - Prefer composition over inheritance
 - Handle errors gracefully with proper exceptions
 
-## Environment Validation
-Before starting implementation, ALWAYS verify:
-1. `uv run python --version` works (Python 3.11+)
-2. `uv sync` succeeds
-3. Project structure exists (pyproject.toml, src/ directory)
-
-If any of these fail, signal "blocked" with the specific error.
-
 ## Workflow
-1. Read the task requirements carefully
-2. Verify environment is ready (see above)
-3. Plan your implementation approach
-4. Write tests first when possible (TDD)
-5. Implement the feature
-6. Run tests and fix any failures
-7. Signal "done" when complete and ready for review
-
-## When Things Go Wrong
-- If tests fail: Fix them, don't signal done until they pass
-- If environment issues: Signal "blocked" with specific error details
-- If task is unclear: Ask for clarification before implementing
+1. First, verify environment: `uv run python --version` and `uv sync`
+2. If environment check fails, signal "blocked" immediately
+3. Read the task requirements carefully
+4. Plan your implementation approach
+5. Write tests first when possible (TDD)
+6. Implement the feature
+7. Run tests and fix any failures
+8. Signal "done" when complete and ready for review
