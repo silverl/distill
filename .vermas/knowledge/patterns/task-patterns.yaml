@@ -1,23 +1,25 @@
 patterns:
 - pattern: testing/*
   insights:
-  - Test suite uses temporary directories with pytest fixtures to create realistic
-    directory hierarchies (temp_dir fixture). Tests cover standard .claude structure,
-    sessions/ subdirectory, mixed locations, and both .json and .jsonl extensions,
-    ensuring parser handles all real-world variations.
+  - When signaling task completion, including specific test metrics (35 test cases,
+    95% coverage, 122 total tests) provides QA with concrete verification targets.
+    This allows QA to validate claims against actual test runs rather than relying
+    on qualitative assessments.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - technical
+  - process
   sample_count: 1
 - pattern: architecture/*
   insights:
-  - Parser uses multiple glob patterns (*.jsonl, *.json) to discover session files,
-    and checks both direct locations and conventional subdirectories (sessions/).
-    This pattern ensures backward compatibility while supporting evolving file structures.
+  - 'When implementing a new parser (e.g., Codex parser), following the exact structure
+    of an existing parser (Claude parser) reduces errors and speeds implementation.
+    Key elements to replicate: discovery method, session model extension, message
+    extraction, tool usage extraction, and test structure. The dev signal explicitly
+    referenced ''following the Claude parser pattern''.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -28,10 +30,10 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - QA agent identified that parser only handled direct .jsonl files, missing the
-    real Claude directory structure (.claude/projects/*/sessions/*.json). This demonstrates
-    the value of domain-aware QA review that tests against actual usage patterns rather
-    than just API contracts.
+  - When QA reviews before dev completes work, signaling 'needs_revision' with specific
+    missing requirements creates a clear handoff. The dev agent then implements to
+    those requirements, and QA re-reviews. This pattern works better than QA waiting
+    indefinitely, as it establishes clear expectations early.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
