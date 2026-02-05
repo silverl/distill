@@ -1,25 +1,24 @@
 patterns:
 - pattern: testing/*
   insights:
-  - QA agent couldn't run pytest locally due to missing pytest-cov plugin and addopts
-    configuration issues, while dev agent reported 87 tests passing. Shared virtual
-    environment or dependency lockfile would ensure consistent test execution across
-    agents.
+  - Tests failed with ModuleNotFoundError because the package wasn't pip-installed
+    in the worktree environment. When developing in worktrees, ensure 'pip install
+    -e .' is run in each worktree's environment before attempting to run tests. This
+    is a common gap when worktrees don't share the same virtualenv.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - process
+  - technical
   sample_count: 1
 - pattern: architecture/*
   insights:
-  - 'When implementing a new parser (e.g., Codex parser), following the exact structure
-    of an existing parser (Claude parser) reduces errors and speeds implementation.
-    Key elements to replicate: discovery method, session model extension, message
-    extraction, tool usage extraction, and test structure. The dev signal explicitly
-    referenced ''following the Claude parser pattern''.'
+  - 'The VerMAS parser follows a clean pattern: (1) find_vermas_directory() locates
+    the root, (2) parse_state_directory() iterates workflow dirs, (3) individual methods
+    handle each file type (parse_signal_file, parse_events_log, parse_task_file, parse_epic_file).
+    This separation makes the parser maintainable and testable.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -85,16 +84,18 @@ patterns:
   sample_count: 1
 - pattern: implementation/*
   insights:
-  - 'The dev agent''s done signal explicitly listed all implemented components: discover_sessions,
-    parse_session_file, analyze returning AnalysisResult, and ObsidianFormatter. This
-    detailed signaling helps with workflow recovery and audit trails when issues occur.'
+  - 'The VerMAS parser implementation demonstrates good patterns: 830 lines of well-structured
+    code with Pydantic models (AgentSignal, WorkflowExecution, MissionInfo, KnowledgeImprovement,
+    AgentLearning, RecapFile, VermasSession), clear separation of concerns, and robust
+    error handling. Test file has 1170 lines covering model creation, directory parsing,
+    signal handling, edge cases, and integration scenarios.'
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - implementation
-  - process
+  - technical
   sample_count: 1
 - pattern: debugging/*
   insights:
@@ -206,5 +207,33 @@ patterns:
   recommended_workflow: null
   tags:
   - workflow-infrastructure
+  - process
+  sample_count: 1
+- pattern: code-delivery/*
+  insights:
+  - Code committed to worktree branches does not automatically appear in main. After
+    'git commit' in a worktree, you must explicitly merge or cherry-pick to main.
+    The task completion signal was sent after the worktree commit, but the merge step
+    was skipped, leaving the code stranded in the feature branch.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - code-delivery
+  - process
+  sample_count: 1
+- pattern: verification/*
+  insights:
+  - The pre-signal-check.sh script verifies tests pass and git status is clean, but
+    doesn't verify the deliverable files exist in the target (main) branch. Add a
+    check like 'git show main:src/path/to/file.py >/dev/null 2>&1' to confirm code
+    was actually merged before signaling 'done'.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - verification
   - process
   sample_count: 1
