@@ -1,10 +1,10 @@
 patterns:
 - pattern: testing/*
   insights:
-  - The pyproject.toml has '--cov' flags in pytest addopts, requiring pytest-cov to
-    be installed. When dev dependencies are not installed (e.g., running 'pytest -q'
-    without dev extras), the test command fails entirely. Consider making coverage
-    optional or checking for the plugin before enabling coverage flags.
+  - The pyproject.toml includes '--cov' flags in pytest addopts, requiring pytest-cov
+    to be installed. Running 'pytest -q' without dev dependencies causes the entire
+    test suite to fail. Consider making coverage flags conditional or ensuring dev
+    dependencies are always installed in CI.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -42,10 +42,10 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - The dev agent created cli.py and core.py with substantial implementation but left
-    them as untracked files. QA agent found no implementation because it checked the
-    committed branch state. Dev agents must always run 'git add' and 'git commit'
-    before signaling 'done' to QA.
+  - Dev agents that create files but fail to 'git add' and 'git commit' before signaling
+    'done' cause false failures. QA agents verify committed code state, not working
+    directory. The dev agent must always commit work before signaling completion to
+    ensure QA can verify the implementation.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -56,10 +56,11 @@ patterns:
   sample_count: 1
 - pattern: reliability/*
   insights:
-  - The workflow detected 'agents died' for the dev role after 248 seconds. Long-running
-    implementations without regular heartbeats can cause workflow infrastructure to
-    terminate the agent. Agents should call heartbeat after completing each significant
-    action (file creation, test run) and especially during long operations.
+  - The dev agent completed substantial work (cli.py with 200+ lines, core.py with
+    250+ lines) but was terminated after 248 seconds. Long-running implementations
+    without regular heartbeat calls cause workflow infrastructure to assume the agent
+    is unresponsive and terminate it. Agents should call heartbeat after completing
+    each major action (file creation, test execution).
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -99,10 +100,10 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - When QA reports 'no implementation found' but dev claims work is done, first check
-    'git status' in the worktree. Untracked or unstaged files indicate the dev agent
-    completed code but failed to commit it. This is a common failure mode when agents
-    focus on implementation and forget the commit step.
+  - When QA reports 'no implementation found' after dev claims completion, first run
+    'git status' in the worktree. Untracked files indicate the dev agent completed
+    the code but failed to commit. This is a common failure mode fixable by manually
+    committing the orphaned files.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null

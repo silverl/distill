@@ -1,13 +1,12 @@
 agents:
   general:
     learnings:
-    - Dev agent completed substantial implementation (cli.py with 237 lines, core.py
-      with 299 lines, integration test) but failed at the critical commit step
-    - QA agent correctly identified the missing implementation by running tests and
-      checking for expected files, but couldn't diagnose the root cause (uncommitted
-      files vs missing code)
-    - The workflow lacks a validation step between dev 'done' signal and QA start
-      to verify commits exist
+    - Dev agent successfully implemented all required functionality (cli.py, core.py,
+      test_integration.py) but failed at the critical commit step, losing all progress
+    - QA agent correctly identified missing implementation by running tests and checking
+      file paths, providing specific technical feedback about what was missing
+    - The dev agent may have run out of context/turns before completing the commit
+      step, suggesting complex tasks need better checkpointing
     strengths: []
     weaknesses: []
     best_practices: []
