@@ -1,12 +1,13 @@
 agents:
   general:
     learnings:
-    - Dev agent adapted quickly to framework change request (Typer to Click) without
-      resistance or delay
-    - QA agent (codex) enforced strict specification compliance, catching subtle format
-      differences
-    - Three-iteration convergence pattern (done-revision-done-revision-done-approved)
-      is efficient for well-scoped tasks
+    - Dev agent demonstrated improved discovery behavior by checking existing state
+      before attempting implementation, breaking the pattern of 4 consecutive cycles
+      with 'planning without discovery' failures.
+    - QA agent appropriately scoped verification to match actual work performed (ls
+      checks only), avoiding unnecessary full test runs for verification-only tasks.
+    - Watcher correctly identified workflow success and noted 'no intervention needed',
+      demonstrating proper passive monitoring role.
     strengths: []
     weaknesses: []
     best_practices: []

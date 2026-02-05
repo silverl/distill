@@ -1,10 +1,10 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - When integrating multiple specialized parsers (Claude, Codex, VerMAS), add a _convert_parser_session_to_base()
-    function that maps parser-specific message formats to a common BaseSession.turns
-    structure. This enables downstream features like --include-conversation to work
-    uniformly across all sources without source-specific handling in display code.
+  - "The 103-second workflow duration was achieved by quickly recognizing existing\
+    \ state and proceeding through dev-done \u2192 qa-approved \u2192 complete signals\
+    \ without unnecessary implementation steps. This pattern should be replicated\
+    \ for any task where discovery reveals work is already complete."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -133,11 +133,10 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - "QA agent caught two specification mismatches: wrong CLI framework (Typer vs Click)\
-    \ and inexact version output format. Dev agent responded quickly to each round\
-    \ of feedback, converging on the exact specification in 3 iterations. This rapid\
-    \ iteration pattern (done\u2192revision\u2192done\u2192revision\u2192done\u2192\
-    approved) took under 5 minutes total."
+  - QA correctly adjusted testing scope when dev reported structure already existed.
+    Instead of running full test suites, QA performed targeted verification (ls checks)
+    appropriate to the actual work performed. This demonstrates adaptive QA that matches
+    verification effort to actual changes.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -332,11 +331,10 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - "The dev\u2192QA\u2192needs_revision\u2192dev\u2192done\u2192approved\u2192complete\
-    \ signal chain completed in under 10 minutes with exactly one revision. QA identified\
-    \ test misalignment early (stale assertions expecting required args), dev fixed\
-    \ both implementation and tests, then QA re-approved. This tight feedback loop\
-    \ avoided prolonged back-and-forth."
+  - When a task's requirements are already satisfied, reporting verification results
+    is a valid way to complete the task. QA appropriately approved based on verification
+    evidence (ls output) rather than requiring code changes. This prevents unnecessary
+    commits of workflow artifacts for already-complete work.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -385,5 +383,19 @@ patterns:
   recommended_workflow: null
   tags:
   - workflow-signals
+  - process
+  sample_count: 1
+- pattern: discovery/*
+  insights:
+  - Before implementing any task, agents should first check if the deliverable already
+    exists. In this workflow, the dev agent correctly identified that the directory
+    structure was already present and reported verification instead of attempting
+    recreation. This avoids duplicate work and maintains idempotency.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - discovery
   - process
   sample_count: 1
