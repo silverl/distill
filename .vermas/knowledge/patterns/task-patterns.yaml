@@ -1,11 +1,11 @@
 patterns:
 - pattern: testing/*
   insights:
-  - 'Use Click''s CliRunner fixture for CLI testing: test --help, --version, subcommand
-    help, and required argument validation. These smoke tests catch integration issues
-    early without requiring complex fixtures. Assert on exit_code and key output strings.'
+  - The dev agent ran 50 tests including integration tests covering the full pipeline
+    and CLI exit codes before signaling done. This thorough testing approach gives
+    high confidence that the implementation is correct, even when QA fails to review.
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -82,18 +82,16 @@ patterns:
   sample_count: 1
 - pattern: implementation/*
   insights:
-  - 'The implemented ClaudeParser demonstrates a solid pattern: track pending tool
-    uses by ID, match tool_result entries to resolve them, handle multiple directory
-    structure entry points (.claude, projects, direct), and use graceful error accumulation
-    via parse_errors property rather than failing fast. This pattern enables reliable
-    parsing of real-world session data.'
+  - 'The dev agent''s done signal explicitly listed all implemented components: discover_sessions,
+    parse_session_file, analyze returning AnalysisResult, and ObsidianFormatter. This
+    detailed signaling helps with workflow recovery and audit trails when issues occur.'
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - implementation
-  - technical
+  - process
   sample_count: 1
 - pattern: debugging/*
   insights:

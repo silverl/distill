@@ -1,11 +1,12 @@
 agents:
   general:
     learnings:
-    - No agent events or signals were recorded for this workflow, indicating failure
-      occurred before the agent could establish communication with the orchestrator
-    - Similar workflows (mission-62ea732b, mission-64ee338c) in cycle-2 succeeded
-      with dev signals, suggesting this was an intermittent infrastructure or initialization
-      issue rather than a code defect
+    - 'Dev agent performed well: completed implementation with 50 passing tests and
+      clear completion signal in ~3.5 minutes of the workflow'
+    - QA agent failed to even start or complete review phase - process died without
+      producing any signals
+    - Agent death occurred specifically in the QA role, suggesting potential issues
+      with tmux pane management or agent spawning for secondary agents
     strengths: []
     weaknesses: []
     best_practices: []
