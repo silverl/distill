@@ -1,9 +1,8 @@
 ---
-status: pending
+status: done
 priority: critical
-workflow: 
+workflow: null
 ---
-
 # Create minimal Python package structure
 
 Create the foundational Python package structure for session-insights. This is a MINIMAL setup task:
