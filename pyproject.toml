@@ -34,6 +34,7 @@ addopts = "-v --cov=session_insights --cov-report=term-missing"
 omit = [
     "src/session_insights/cli.py",
     "src/session_insights/__main__.py",
+    ".worktrees/*",
 ]
 
 [tool.mypy]
