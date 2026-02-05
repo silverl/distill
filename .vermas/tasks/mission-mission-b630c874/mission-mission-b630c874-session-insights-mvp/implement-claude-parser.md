@@ -1,9 +1,8 @@
 ---
-status: pending
+status: done
 priority: medium
-workflow: 
+workflow: null
 ---
-
 # Implement Claude session parser
 
 Implement parser for .claude/ session history:
