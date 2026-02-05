@@ -1,18 +1,17 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - Rather than duplicating parsing logic, the new sessions command directly instantiates
-    ClaudeParser and CodexParser and calls parse_directory(). This ensures consistency
-    with existing behavior and reduces maintenance burden. The pattern of passing
-    directory paths to established parser components is cleaner than reimplementing
-    discovery logic.
+  - 'The TASK.md included explicit prior learnings: ''This workflow attempted implement-cli-skeleton
+    when cli.py already exists'' and ''small focused tasks outperform monolithic implementations''.
+    This context helped the dev agent avoid the Gate 0 trap of reimplementing existing
+    code and instead focus on the actual gap (entry point wiring).'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - technical
+  - process
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -45,9 +44,11 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - Reporting coverage per-module (pattern.py 92%, vermas.py 83%, etc.) rather than
-    just total coverage helps identify which modules need attention. The lowest-coverage
-    module (vermas.py 83%) is immediately visible for future improvement.
+  - 'The task had exactly 3 testable criteria: --output option with default, output
+    dir creation, and confirmation message. QA verified each criterion explicitly
+    and ran `pytest tests/test_cli.py -q` (11 passed). This atomic scope allowed QA
+    to verify without needing to understand the full codebase, enabling parallel dev/QA
+    execution.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -217,17 +218,18 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - Running CLI against real data (not just unit tests) exposed a pyproject.toml entrypoint
-    misconfiguration (cli:main vs cli:app) that wouldn't surface in test-only validation.
-    Production-like validation with actual data catches integration-level bugs that
-    unit tests miss.
+  - The dev agent session was first used for a debug meeting analyzing a prior failed
+    mission (b630c874), where it performed root cause analysis and created action
+    items. The same session context (with accumulated project knowledge) was then
+    available for the actual implementation workflow. This accidental session reuse
+    provided beneficial context about failure modes to avoid.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - debugging
-  - technical
+  - process
   sample_count: 1
 - pattern: integration/*
   insights:
@@ -330,10 +332,11 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - The dev agent signaled 'done' with detailed fix descriptions, QA validated in
-    under 2 minutes, then signaled 'approved'. This async signal flow completed faster
-    (316s total) than meeting-heavy alternatives while maintaining quality through
-    structured verification.
+  - QA approved first (17:28), dev signaled done second (17:29), watcher confirmed
+    third (17:30). This 3-minute signal chain worked because QA could verify independently
+    while dev was still working. Having QA run targeted tests (11 CLI tests) rather
+    than full suite enabled fast turnaround. The Codex-based QA agent was effective
+    for focused test verification.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -593,4 +596,19 @@ patterns:
   tags:
   - cli
   - technical
+  sample_count: 1
+- pattern: task-design/*
+  insights:
+  - When a task specifies 'implement X' but X already exists (different framework/approach),
+    the dev agent successfully pivoted from 'create with Click' to 'fix existing Typer
+    entry point'. This preserved working code and avoided introducing regressions.
+    Tasks should include a discovery step to check existing state before prescribing
+    implementation details.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - task-design
+  - process
   sample_count: 1

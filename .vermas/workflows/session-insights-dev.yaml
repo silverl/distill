@@ -14,12 +14,30 @@ states:
     instructions: |
       Implement the assigned task for the session-insights CLI tool.
       
+      PRIORITY ORDER (address in this order unless task specifies otherwise):
+      1. Wire real data into existing CLI command skeletons (vermas_task_visibility)
+      2. Implement note generation/enrichment logic (note_content_richness - 0% and critical)
+      3. Add end-to-end CLI invocation tests (cli_runs_clean)
+      4. New features or commands only after above are functional
+      
+      CRITICAL: NO MORE SCAFFOLDING
+      The CLI skeleton and parser are complete and stable. Do NOT create new command
+      stubs or placeholder implementations. All work must produce functional code that
+      operates on real data. If your task involves a CLI command, verify it displays
+      actual task state, not stub/placeholder output.
+      
       CRITICAL: CLI TASK HANDLING
       CLI tasks have historically high failure rates (>50%). If your task involves CLI:
       1. DECOMPOSE into layers: argument parsing, dispatch logic, business logic
       2. Implement and test each layer separately before integration
       3. If blocked on CLI infrastructure after 2 attempts, signal "blocked" immediately
       4. Do NOT retry the same failing approach - signal blocked for human review
+      
+      CRITICAL: NOTE CONTENT RICHNESS
+      If your task relates to note generation or content enrichment:
+      - This KPI has been at 0% for 5+ cycles and is the single biggest risk
+      - Implement the simplest functional version first (even if minimal)
+      - A working minimal implementation beats an ambitious incomplete one
       
       Follow Python best practices:
       - Use Pydantic v2 for models
@@ -30,11 +48,14 @@ states:
       Run tests before signaling done:
       `uv run pytest tests/ -x -q`
       
+      Also run at least one end-to-end CLI invocation test:
+      `uv run python -m session_insights <command> --help`
+      Verify the command runs without error and produces meaningful output.
+      
+      If tests fail, fix them before signaling.
+      
       Signal "done" when implementation is complete and tests pass.
-      Signal "blocked" if:
-      - CLI infrastructure issues persist after 2 attempts
-      - Dependencies cannot be resolved
-      - Same error occurs twice with different approaches
+      Signal "blocked" if you encounter infrastructure issues or are stuck after 2 attempts.
     on_signal:
       done:
         from: engineer
@@ -43,26 +64,30 @@ states:
         from: engineer
         next: blocked
     timeout:
-      duration: 45m
+      duration: 30m
       action: nudge
 
   reviewing:
     instructions: |
-      Review the implementation for correctness and quality.
+      Review the engineer's implementation for the session-insights CLI tool.
       
-      Verification steps:
-      1. Read all changed files
-      2. Run full test suite with coverage
-      3. Test CLI manually if applicable
-      4. Check for edge cases and error handling
+      REVIEW CHECKLIST (must verify all):
+      1. Code operates on REAL DATA, not stubs or placeholders
+      2. CLI commands produce meaningful output when invoked
+      3. Tests exist and pass: `uv run pytest tests/ -x -q`
+      4. At least one end-to-end CLI invocation succeeds with real output
+      5. Type hints present, Pydantic v2 models used where appropriate
+      6. No regressions in existing functionality
       
-      For CLI tasks specifically:
-      - Verify argument parsing handles edge cases
-      - Confirm error messages are user-friendly
-      - Test with invalid inputs
+      SPECIAL ATTENTION:
+      - If the task touches note_content_richness: verify notes contain actual
+        enriched content, not template/placeholder text
+      - If the task touches vermas_task_visibility: verify CLI shows real task
+        state from the system, not hardcoded examples
       
-      Signal "approved" if quality is acceptable.
-      Signal "needs_revision" with specific feedback if changes needed.
+      Signal "approved" if all checks pass.
+      Signal "needs_revision" with specific feedback if issues found.
+      Be specific about what needs to change - vague feedback causes retry loops.
     on_signal:
       approved:
         from: reviewer
@@ -74,13 +99,13 @@ states:
       duration: 15m
       action: nudge
 
-  blocked:
-    type: terminal
-    on_entry:
-      - action: log
-        message: Task blocked - requires human intervention. This task has exceeded retry threshold or hit persistent infrastructure issues.
-
   finalize:
-    type: terminal
     on_entry:
       - action: commit
+    type: terminal
+
+  blocked:
+    on_entry:
+      - action: log
+        message: "Workflow blocked - engineer stuck after multiple attempts or infrastructure issue. Requires manual intervention."
+    type: terminal

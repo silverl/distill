@@ -1,12 +1,16 @@
 agents:
   general:
     learnings:
-    - Dev agent provided comprehensive coverage breakdown (8 modules with individual
-      percentages), enabling future targeted improvements
-    - QA agent independently ran the exact same pytest command rather than trusting
-      dev's output, demonstrating proper verification protocol
-    - Both agents efficiently completed their roles within 163 seconds total - verification
-      tasks should be quick
+    - 'Dev agent showed strong adaptability: recognized Typer-based CLI existed despite
+      task specifying Click, fixed the actual gap (entry point wiring with main()
+      calling app()) rather than rewriting. This pragmatic approach delivered value
+      in minimal time.'
+    - 'QA agent (Codex) was effective for focused test verification: ran targeted
+      test suite (11 tests) and verified 3 specific acceptance criteria. The different
+      agent type (Codex vs Claude) provided genuine independence in verification.'
+    - 'Watcher agent served as a reliable synchronization point: confirmed both dev
+      and QA signals before the workflow progressed to completion. The watcher''s
+      progress signal at 17:30 provided clear audit trail of the signal chain.'
     strengths: []
     weaknesses: []
     best_practices: []

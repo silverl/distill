@@ -1,0 +1,25 @@
+id: adapt-mission-2eabad9a-c1-session-insights-dev
+date: '2026-02-05T11:47:35.865828'
+type: workflow_change
+target: workflow/session-insights-dev
+change: 'The current workflow has improved CLI handling instructions but lacks explicit
+  prioritization of note_content_richness (0% after 5+ cycles, highest-risk KPI) and
+  doesn''t guide engineers to wire real data into existing skeletons rather than creating
+  new scaffolding. The evaluation confirms skeleton code exists but isn''t functional.
+  This modification adds: (1) explicit priority ordering for remaining work, (2) a
+  ''wire real data first'' directive to prevent more scaffolding without integration,
+  (3) note_content_richness as a must-address item, and (4) a test requirement for
+  actual CLI invocations, not just unit tests.'
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.25
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null
