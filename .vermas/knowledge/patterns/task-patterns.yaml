@@ -46,18 +46,17 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - QA noted that 'running pytest without PYTHONPATH uses main repo install and fails
-    new test'. When developing in git worktrees, use 'PYTHONPATH=src python -m pytest
-    tests/' to ensure tests run against the local worktree code rather than the installed
-    package. This prevents false negatives when testing new features not yet merged
-    to main.
+  - Dev signal included '186 tests pass' and QA verified same count, providing evidence
+    of consistent test execution across roles. This cross-validation catches scenarios
+    where dev and QA might run different test subsets or have environment differences
+    affecting test discovery.
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - technical
+  - process
   sample_count: 1
 - pattern: code-recovery/*
   insights:
@@ -90,9 +89,11 @@ patterns:
   sample_count: 1
 - pattern: error-handling/*
   insights:
-  - 'The ''agents died'' error with ''Dead roles: [dev]'' indicates the workflow orchestrator
-    correctly detected the missing agent but lacks retry/recovery logic. Consider
-    adding agent restart capability for recoverable failures versus fatal abort.'
+  - The 'agents died' error should first check if the workflow has already completed
+    via signals. In this case, all three roles had signaled success within 3 minutes
+    (14:04-14:06) before the QA agent died. A pre-failure signal check would have
+    correctly identified this as a successful completion with agent cleanup issue
+    rather than a failed workflow.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -118,10 +119,11 @@ patterns:
   sample_count: 1
 - pattern: workflow-reliability/*
   insights:
-  - At 4666 seconds (77+ minutes), all three agents died simultaneously due to tmux
-    session termination. This is the second workflow to fail this way. Long-running
-    workflows need session keepalive mechanisms, periodic checkpointing, or architectural
-    limits (break tasks into <30 minute increments) to survive infrastructure interruptions.
+  - When an agent sends its final signal (done/approved/complete) and then terminates
+    before the orchestrator acknowledges, the framework reports 'agents died' despite
+    successful completion. The workflow recorded three successful signals (dev done
+    at 14:04, QA approved at 14:06, watcher complete at 14:06) yet reported failure.
+    Orchestrators should check for existing completion signals before declaring failure.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -330,13 +332,13 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - 'The successful workflow followed a three-signal pattern: (1) dev signals ''done''
-    with implementation details, (2) QA signals ''approved'' after verifying requirements
-    and running tests, (3) dev signals ''complete'' confirming final state. This handoff
-    ensures explicit verification before marking work finished and prevents the ''done
-    but not committed'' anti-pattern.'
+  - "The dev\u2192QA\u2192watcher signal chain (done\u2192approved\u2192complete)\
+    \ provides explicit verification at each stage. This workflow demonstrated the\
+    \ pattern working correctly: dev implemented with 186 tests passing, QA verified\
+    \ requirements and ran tests, watcher confirmed overall completion. The signal\
+    \ sequence creates an audit trail even when infrastructure fails."
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:

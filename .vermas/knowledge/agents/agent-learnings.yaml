@@ -1,13 +1,12 @@
 agents:
   general:
     learnings:
-    - Dev agent provided detailed done signal with implementation specifics (6 tests
-      passing, exact changes made), enabling efficient QA review without back-and-forth
-      clarification.
-    - QA agent identified environment-specific test behavior (PYTHONPATH requirement)
-      and documented it in approval message, preventing future confusion.
-    - Three-agent setup (dev, watcher, qa) with codex-based QA enabled automated verification
-      even though the watcher agent role was minimal in this short cycle.
+    - Dev agent provided detailed implementation specifics in done signal (CLI behavior,
+      test count, example command) enabling efficient QA review
+    - QA agent completed verification and approval in under 3 minutes after dev signal,
+      demonstrating effective handoff
+    - Watcher agent correctly synthesized dev and QA outcomes in complete signal,
+      providing workflow summary
     strengths: []
     weaknesses: []
     best_practices: []
