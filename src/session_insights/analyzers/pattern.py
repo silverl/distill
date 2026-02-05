@@ -8,7 +8,7 @@ This module provides analyzers that detect patterns in session data:
 
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 import hashlib
 
@@ -418,7 +418,7 @@ class TimelineAnalyzer(BaseAnalyzer):
         sorted_sessions = sorted(sessions, key=lambda s: s.start_time)
 
         # Calculate daily session counts for the last 30 days
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         last_30_days = [s for s in sorted_sessions if (now - s.start_time).days <= 30]
         previous_30_days = [
             s for s in sorted_sessions

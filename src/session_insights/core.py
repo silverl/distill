@@ -211,7 +211,7 @@ def _calculate_stats(sessions: list[BaseSession]) -> SessionStats:
             tools[tool.name] += tool.count
 
     # Date range
-    times = [s.start_time for s in sessions]
+    times = [s.start_time for s in sessions if s.start_time is not None]
     date_range = (min(times), max(times)) if times else None
 
     return SessionStats(

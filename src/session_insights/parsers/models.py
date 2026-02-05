@@ -6,7 +6,7 @@ outcomes) are either auto-derived or set directly.
 """
 
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -110,8 +110,24 @@ class BaseSession(BaseModel):
                 data["start_time"] = data["timestamp"]
         return data
 
+    @staticmethod
+    def _ensure_utc(dt: datetime | None) -> datetime | None:
+        """Normalize a datetime to UTC-aware. Returns None if input is None."""
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
     def model_post_init(self, __context: Any) -> None:
         """Auto-derive enriched fields from raw data if not directly provided."""
+        # Normalize all datetimes to UTC-aware to prevent comparison errors
+        self.timestamp = self._ensure_utc(self.timestamp) or datetime.min.replace(
+            tzinfo=timezone.utc
+        )
+        self.start_time = self._ensure_utc(self.start_time)
+        self.end_time = self._ensure_utc(self.end_time)
+
         # Derive tools_used from tool_calls
         if not self.tools_used and self.tool_calls:
             tool_counts: Counter[str] = Counter(
@@ -152,7 +168,9 @@ class BaseSession(BaseModel):
         if et is None:
             # Fall back to deriving from message timestamps (need 2+ for a span)
             timestamps = [
-                m.timestamp for m in self.messages if m.timestamp is not None
+                self._ensure_utc(m.timestamp)
+                for m in self.messages
+                if m.timestamp is not None
             ]
             if len(timestamps) >= 2:
                 et = max(timestamps)

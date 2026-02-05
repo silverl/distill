@@ -1,16 +1,18 @@
 agents:
   general:
     learnings:
-    - "Dev agent produced high-quality code (+269 LOC with 225 tests passing) on the\
-      \ task branch, demonstrating that the implementation capability is not the bottleneck\
-      \ \u2014 the merge process is."
-    - QA agent correctly detected the artifact-only commit initially (needs_revision
-      signal) but then accepted dev's verbal claim of branch-level work without verifying
-      the main-branch state, undermining the detection system.
-    - Post-workflow, three previously-stalled action items (spanning 3+ review cycles)
-      were finally executed as direct commits, suggesting that treating action items
-      as standalone fixes rather than workflow-routed tasks breaks the execution stall
-      pattern.
+    - 'Dev agent was highly effective at implementation: +375 LOC of genuine code
+      with 232 tests passing at 99% coverage on the formatter module. Dev proactively
+      addressed edge cases (message truncation, max 5 questions, include_conversation
+      flag) before QA review.'
+    - "QA agent provided fast, specific feedback (21 seconds after dev's done signal)\
+      \ identifying two concrete test names and a dependency issue. However, the flagged\
+      \ issues turned out to already be fixed \u2014 suggesting QA may have analyzed\
+      \ code statically without running all tests first, then corrected after verification."
+    - "Watcher/merge agent continues to be the systemic failure point: it creates\
+      \ artifact-only commits on main while the real code sits on task branches. This\
+      \ is the 6th documented occurrence and the core blocker for the project \u2014\
+      \ all the dev and QA quality is wasted if code never reaches main."
     strengths: []
     weaknesses: []
     best_practices: []

@@ -1,12 +1,11 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - The dev refactored cli.py from direct parser instantiation (ClaudeParser, CodexParser)
-    to using core module's discover_sessions() and parse_sessions() functions. This
-    abstraction allowed adding vermas support to the CLI by adding a single source
-    directory pattern rather than importing and configuring a third parser. The pattern
-    of centralizing discovery logic in core.py and consuming it from cli.py reduces
-    duplication and simplifies adding new source types.
+  - The formatter extracts structured sections (What Was Asked, Tool Usage Summary,
+    Accomplishments, Key Decisions) from raw conversation turns using pattern matching
+    and purpose inference maps. The _infer_tool_purpose() method maps 10 known tool
+    names to human-readable descriptions with a 'General tool usage' fallback. This
+    is a reusable pattern for transforming raw agent traces into readable reports.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -48,12 +47,11 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - "The dev agent used a reliable pattern for CLI wiring: separate parsing, dispatch,\
-    \ and logic layers, with integration tests that create mock directory structures\
-    \ for each source type (claude, codex, vermas). This test_cli_wiring.py (+247\
-    \ LOC) approach \u2014 creating temporary directories with fixture data and verifying\
-    \ end-to-end parser discovery \u2014 has produced zero test failures across two\
-    \ cycles where it was applied."
+  - "Dev anticipated the test failures QA later flagged (include_conversation default\
+    \ behavior) and fixed them before the first done signal by using include_conversation=False\
+    \ in relevant tests. This proactive approach meant QA's needs_revision was actually\
+    \ a false alarm \u2014 the dev had already addressed the concern. Writing tests\
+    \ alongside implementation catches interface mismatches early."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -138,11 +136,11 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - QA initially detected the artifact-only commit via pre-signal-check.sh and issued
-    needs_revision. However, when dev responded with 'work is on commit b3f6789, 225
-    tests pass', QA approved based on the dev's signal rather than independently verifying
-    the final main-branch commit. QA should always verify `git show <final_commit>
-    -- src/ tests/` before approving, not trust dev claims about branch-level work.
+  - "The dev-QA interaction was efficient: dev signaled done, QA flagged 2 test issues\
+    \ within 21 seconds, dev clarified tests were already fixed (43 seconds), QA verified\
+    \ and approved (2 minutes later). Total resolution: ~3 minutes for the entire\
+    \ review cycle. The signal-based workflow (done \u2192 needs_revision \u2192 done\
+    \ \u2192 approved) created a clear audit trail with specific, actionable feedback."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -467,12 +465,12 @@ patterns:
   sample_count: 1
 - pattern: process/*
   insights:
-  - Three long-pending action items (act-8c5932eb .gitignore cleanup, act-2d5f5e36
-    pre-signal-check.sh fix, coverage config) were finally executed as post-workflow
-    fix commits (8269907, 33f3b78, eb44c93). This broke a pattern where action items
-    accumulated across 3+ cycles without execution. The key enabler was executing
-    fixes immediately in the same session rather than deferring to a future cycle's
-    task planner.
+  - 'Despite explicit tracking in MEMORY.md and review meetings mandating ''agenda
+    item #1: status of prior action items'', critical fixes like act-71835fc6 (fix
+    merge process) and act-1231eb07 (recover branch code) remain unexecuted for 3+
+    cycles. The merge-drops-source bug keeps recurring because the fix action item
+    never gets scheduled as an actual task. The planning phase creates new tasks instead
+    of drawing from the action item backlog.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -685,12 +683,12 @@ patterns:
   sample_count: 1
 - pattern: deployment/*
   insights:
-  - 'When dev writes code on a task branch and the merge process creates a commit
-    on main, the resulting commit can contain zero source file changes while including
-    only .vermas/ planning artifacts. This is a systemic merge process bug: the merge
-    operation either never runs `git merge` or runs it incorrectly. Code on branch
-    b3f6789 (+269 LOC, 2 files) was approved by QA but the main commit 14d4caf has
-    0 source changes. This is the 5th documented occurrence.'
+  - Main commit 81bd567 has 0 src/test changes despite task branch 7ba531c having
+    +375 LOC (179 in obsidian.py, 225 in tests). The merge process creates a commit
+    with .vermas/ artifacts but fails to include actual source changes. This is the
+    6th documented occurrence (cycles 3, 16, C8, M2e-C3, and now this). The pattern
+    persists because the fix (act-71835fc6) has never been executed despite being
+    a pending action item for multiple cycles.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
