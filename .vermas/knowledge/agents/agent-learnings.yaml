@@ -1,12 +1,12 @@
 agents:
   general:
     learnings:
-    - Dev agent responded quickly to QA feedback (under 2 minutes per revision cycle),
-      demonstrating effective understanding of specific feedback
-    - 'QA agent correctly caught a subtle issue: removing imports fixed lint but violated
-      task requirements - showing requirement-aware review'
-    - Watcher agent tracked workflow state transitions, providing audit trail but
-      not actively intervening in dev-QA loop
+    - Dev agent correctly identified the task as already-complete rather than re-implementing,
+      demonstrating good codebase awareness
+    - QA agent properly ran full test suite (185 passed) but crashed after signaling,
+      suggesting possible resource/timeout issue
+    - Watcher agent successfully synthesized both dev and QA signals into workflow-complete
+      status before orchestrator detected QA death
     strengths: []
     weaknesses: []
     best_practices: []

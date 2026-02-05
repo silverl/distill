@@ -31,11 +31,12 @@ patterns:
   sample_count: 1
 - pattern: verification/*
   insights:
-  - This workflow used Claude for dev/watcher and Codex for QA. The mixed-agent-type
-    team successfully completed the task through clear signal-based communication.
-    Agent type matters less than clear acceptance criteria and structured feedback.
+  - When dev discovers feature already exists ('CLI wiring was already complete'),
+    the workflow should have an early exit path that marks the task as 'unnecessary'
+    rather than continuing through QA. This saves ~50% of cycle time for redundant
+    tasks.
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -44,9 +45,9 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - After adding the 'sources' command, dev added 5 specific tests for the new functionality.
-    This allowed QA to verify behavior through test execution rather than manual inspection.
-    New CLI subcommands should have corresponding test coverage before signaling completion.
+  - QA initially failed pytest due to missing deps and pytest-cov addopts conflicts.
+    Resolved by creating fresh venv with '. .venv/bin/activate && pip install .[dev]'.
+    This pattern ensures clean test environment isolation from global Python state.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -510,5 +511,33 @@ patterns:
   recommended_workflow: null
   tags:
   - workflow-efficiency
+  - process
+  sample_count: 1
+- pattern: gate-0-validation/*
+  insights:
+  - The dev agent discovered CLI wiring was already complete (discover_sessions, parse_session_file
+    routing). This demonstrates Gate 0 failure - the task was assigned without verifying
+    the feature didn't already exist. A pre-planning check like 'git ls-files --error-unmatch'
+    or code grep for the feature would have caught this before workflow launch.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - gate-0-validation
+  - process
+  sample_count: 1
+- pattern: agent-reliability/*
+  insights:
+  - QA agent signaled 'approved' at 14:56:11, then dev signaled 'done' at 14:57:22,
+    watcher signaled 'complete' at 14:57:47. Yet workflow failed because QA agent
+    died afterward. The orchestrator should treat post-completion agent death differently
+    than mid-task failure, preserving the success state.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - agent-reliability
   - process
   sample_count: 1
