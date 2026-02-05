@@ -3,6 +3,8 @@
 This module defines the single BaseSession model used by both parsers and formatters.
 Parsers populate raw data (messages, tool_calls), and enriched fields (turns, tools_used,
 outcomes) are either auto-derived or set directly.
+
+All shared model types live here to avoid circular imports between parsers and formatters.
 """
 
 from collections import Counter
@@ -58,6 +60,61 @@ class SessionOutcome(BaseModel):
     success: bool = True
 
 
+class AgentSignal(BaseModel):
+    """Represents a signal sent by an agent in a workflow."""
+
+    signal_id: str
+    agent_id: str
+    role: str
+    signal: str  # done, approved, needs_revision, blocked, complete, progress
+    message: str
+    timestamp: datetime
+    workflow_id: str
+    metadata: dict[str, Any] | None = None
+
+
+class AgentLearning(BaseModel):
+    """Represents agent learnings from knowledge files."""
+
+    agent: str = "general"
+    learnings: list[str] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    best_practices: list[str] = Field(default_factory=list)
+
+
+class KnowledgeImprovement(BaseModel):
+    """Represents an adaptation/improvement record from knowledge files."""
+
+    id: str
+    date: datetime | None = None
+    type: str = ""
+    target: str = ""
+    change: str = ""
+    before_metrics: dict[str, Any] = Field(default_factory=dict)
+    after_metrics: dict[str, Any] = Field(default_factory=dict)
+    validated: bool = False
+    impact: str = ""
+
+
+class CycleInfo(BaseModel):
+    """Workflow cycle metadata."""
+
+    mission_id: str | None = None
+    cycle: int | None = None
+    workflow_id: str | None = None
+    task_name: str | None = None
+    outcome: str = "unknown"
+
+
+class QualityAssessment(BaseModel):
+    """Quality assessment of a session's work."""
+
+    score: float | None = None
+    criteria: dict[str, float] = Field(default_factory=dict)
+    notes: str = ""
+
+
 class BaseSession(BaseModel):
     """Unified base model for AI coding assistant sessions.
 
@@ -88,6 +145,14 @@ class BaseSession(BaseModel):
     tools_used: list[ToolUsageSummary] = Field(default_factory=list)
     outcomes: list[SessionOutcome] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+
+    # Task and workflow context
+    task_description: str = ""
+    signals: list[AgentSignal] = Field(default_factory=list)
+    learnings: list[AgentLearning] = Field(default_factory=list)
+    improvements: list[KnowledgeImprovement] = Field(default_factory=list)
+    quality_assessment: QualityAssessment | None = None
+    cycle_info: CycleInfo | None = None
 
     # Extra
     metadata: dict[str, Any] = Field(default_factory=dict)

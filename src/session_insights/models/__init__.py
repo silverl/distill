@@ -12,8 +12,13 @@ from session_insights.models.insight import (
     InsightType,
 )
 from session_insights.parsers.models import (
+    AgentLearning,
+    AgentSignal,
     BaseSession,
     ConversationTurn,
+    CycleInfo,
+    KnowledgeImprovement,
+    QualityAssessment,
     SessionOutcome,
     ToolUsageSummary,
 )
@@ -23,12 +28,17 @@ from session_insights.parsers.models import (
 ToolUsage = ToolUsageSummary
 
 __all__ = [
+    "AgentLearning",
+    "AgentSignal",
     "BaseSession",
     "ConversationTurn",
+    "CycleInfo",
     "Insight",
     "InsightCollection",
     "InsightSeverity",
     "InsightType",
+    "KnowledgeImprovement",
+    "QualityAssessment",
     "SessionOutcome",
     "ToolUsage",
     "ToolUsageSummary",

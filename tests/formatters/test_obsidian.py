@@ -378,12 +378,12 @@ class TestVermasFormatting:
     @pytest.fixture
     def vermas_session(self) -> BaseSession:
         """Create a VerMAS-like session using duck typing fields."""
-        from session_insights.parsers.vermas import (
+        from session_insights.parsers.models import (
             AgentLearning,
             AgentSignal,
             KnowledgeImprovement,
-            VermasSession,
         )
+        from session_insights.parsers.vermas import VermasSession
 
         start = datetime(2024, 6, 15, 14, 0, 0)
         end = datetime(2024, 6, 15, 14, 30, 0)
@@ -420,7 +420,7 @@ class TestVermasFormatting:
                     workflow_id="wf-001",
                 ),
             ],
-            agent_learnings=[
+            learnings=[
                 AgentLearning(
                     agent="dev",
                     learnings=["Incremental testing prevents regressions"],

@@ -324,11 +324,11 @@ class ObsidianFormatter:
         """Format VerMAS task details section."""
         lines = ["## Task Details", ""]
 
-        task_name = getattr(session, "task_name", None)
-        task_desc = getattr(session, "task_description", "")
-        mission_id = getattr(session, "mission_id", None)
-        cycle = getattr(session, "cycle", None)
-        outcome = getattr(session, "outcome", "unknown")
+        cycle_info = session.cycle_info
+        task_name = cycle_info.task_name if cycle_info else None
+        mission_id = cycle_info.mission_id if cycle_info else None
+        cycle = cycle_info.cycle if cycle_info else None
+        outcome = cycle_info.outcome if cycle_info else "unknown"
 
         if task_name:
             lines.append(f"- **Task:** {task_name}")
@@ -338,18 +338,18 @@ class ObsidianFormatter:
             lines.append(f"- **Cycle:** {cycle}")
         lines.append(f"- **Outcome:** {outcome}")
 
-        if task_desc:
+        if session.task_description:
             lines.append("")
             lines.append("### Description")
             lines.append("")
-            lines.append(task_desc)
+            lines.append(session.task_description)
 
         lines.append("")
         return "\n".join(lines)
 
     def _format_vermas_signals_section(self, session: BaseSession) -> str:
         """Format VerMAS agent signals timeline."""
-        signals = getattr(session, "signals", [])
+        signals = session.signals
         if not signals:
             return ""
 
@@ -369,8 +369,8 @@ class ObsidianFormatter:
 
     def _format_vermas_learnings_section(self, session: BaseSession) -> str:
         """Format VerMAS agent learnings and improvements."""
-        agent_learnings = getattr(session, "agent_learnings", [])
-        improvements = getattr(session, "improvements", [])
+        agent_learnings = session.learnings
+        improvements = session.improvements
 
         if not agent_learnings and not improvements:
             return ""

@@ -8,10 +8,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from session_insights.parsers.vermas import (
+from session_insights.parsers.models import (
     AgentLearning,
     AgentSignal,
     KnowledgeImprovement,
+)
+from session_insights.parsers.vermas import (
     MissionInfo,
     RecapFile,
     VermasParser,
@@ -880,9 +882,9 @@ class TestKnowledgeParsing:
 
             sessions = parser.parse_directory(vermas_dir)
             assert len(sessions) == 1
-            assert len(sessions[0].agent_learnings) == 1
-            assert sessions[0].agent_learnings[0].agent == "general"
-            assert len(sessions[0].agent_learnings[0].learnings) == 2
+            assert len(sessions[0].learnings) == 1
+            assert sessions[0].learnings[0].agent == "general"
+            assert len(sessions[0].learnings[0].learnings) == 2
 
     def test_parse_empty_learnings(self, parser: VermasParser) -> None:
         """Test handling of empty agent learnings."""
@@ -922,8 +924,8 @@ class TestKnowledgeParsing:
             sessions = parser.parse_directory(vermas_dir)
             assert len(sessions) == 1
             # Should handle None values gracefully
-            assert len(sessions[0].agent_learnings) == 1
-            assert sessions[0].agent_learnings[0].learnings == []
+            assert len(sessions[0].learnings) == 1
+            assert sessions[0].learnings[0].learnings == []
 
 
 class TestRecapFile:

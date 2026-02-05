@@ -16,22 +16,15 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
-from .models import BaseSession
+from .models import (
+    AgentLearning,
+    AgentSignal,
+    BaseSession,
+    CycleInfo,
+    KnowledgeImprovement,
+)
 
 logger = logging.getLogger(__name__)
-
-
-class AgentSignal(BaseModel):
-    """Represents a signal sent by an agent in a workflow."""
-
-    signal_id: str
-    agent_id: str
-    role: str
-    signal: str  # done, approved, needs_revision, blocked, complete, progress
-    message: str
-    timestamp: datetime
-    workflow_id: str
-    metadata: dict[str, Any] | None = None
 
 
 class WorkflowExecution(BaseModel):
@@ -78,30 +71,6 @@ class MissionInfo(BaseModel):
     description: str = ""
 
 
-class KnowledgeImprovement(BaseModel):
-    """Represents an adaptation/improvement record from knowledge files."""
-
-    id: str
-    date: datetime | None = None
-    type: str = ""
-    target: str = ""
-    change: str = ""
-    before_metrics: dict[str, Any] = Field(default_factory=dict)
-    after_metrics: dict[str, Any] = Field(default_factory=dict)
-    validated: bool = False
-    impact: str = ""
-
-
-class AgentLearning(BaseModel):
-    """Represents agent learnings from knowledge files."""
-
-    agent: str = "general"
-    learnings: list[str] = Field(default_factory=list)
-    strengths: list[str] = Field(default_factory=list)
-    weaknesses: list[str] = Field(default_factory=list)
-    best_practices: list[str] = Field(default_factory=list)
-
-
 class RecapFile(BaseModel):
     """Represents a workflow recap file."""
 
@@ -115,24 +84,30 @@ class VermasSession(BaseSession):
     """Represents a parsed VerMAS workflow session.
 
     Extends BaseSession with VerMAS-specific fields for tracking
-    multi-agent workflow executions.
+    multi-agent workflow executions. Inherits signals, learnings,
+    improvements, task_description, and cycle_info from BaseSession.
     """
 
     source: str = "vermas"
-    # Override BaseSession properties with actual fields for duration tracking
-    start_time: datetime | None = None
-    end_time: datetime | None = None
     mission_id: str | None = None
     task_name: str | None = None
     cycle: int | None = None
     workflow_id: str | None = None
-    signals: list[AgentSignal] = Field(default_factory=list)
     outcome: str = "unknown"  # completed, approved, blocked, done, in_progress
-    task_description: str = ""
     mission_info: MissionInfo | None = None
-    improvements: list[KnowledgeImprovement] = Field(default_factory=list)
-    agent_learnings: list[AgentLearning] = Field(default_factory=list)
     recaps: list[RecapFile] = Field(default_factory=list)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Auto-derive cycle_info from VerMAS-specific fields."""
+        super().model_post_init(__context)
+        if self.cycle_info is None and (self.mission_id or self.cycle is not None):
+            self.cycle_info = CycleInfo(
+                mission_id=self.mission_id,
+                cycle=self.cycle,
+                workflow_id=self.workflow_id,
+                task_name=self.task_name,
+                outcome=self.outcome,
+            )
 
     @property
     def session_duration_minutes(self) -> float | None:
@@ -284,7 +259,7 @@ class VermasParser:
             end_time=end_time,
             mission_info=mission_info,
             improvements=improvements,
-            agent_learnings=agent_learnings,
+            learnings=agent_learnings,
             recaps=recaps,
             summary=self._generate_summary(signals, outcome, task_name, start_time, end_time),
         )
