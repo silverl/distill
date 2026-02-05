@@ -1,0 +1,10 @@
+agent_id: 8183484e
+created_at: '2026-02-05T16:15:24.067586'
+message: 'QA review: required analyze command + tests not found. src/runner/interface/commands/analyze.py
+  and src/runner/interface/cli.py are missing; no tests at tests/unit/interface/commands/test_analyze.py.
+  pytest -q fails due to missing pytest-cov.'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 7e477b4e
+workflow_id: mission-62ea732b-cycle-8-execute-create-analyze-command-skeleton

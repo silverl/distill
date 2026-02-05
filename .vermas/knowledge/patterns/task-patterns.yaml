@@ -290,11 +290,10 @@ patterns:
   sample_count: 1
 - pattern: task-validation/*
   insights:
-  - This cycle-4 workflow attempted to implement cli.py which already existed as 242
-    lines of functional code in git main branch. Running 'git ls-files --error-unmatch
-    src/session_insights/cli.py' would have returned success, indicating the task
-    is stale. Task backlog systems should auto-validate deliverables exist before
-    spawning expensive multi-agent workflows.
+  - The obsidian formatter was marked as status:done in the task backlog (implement-obsidian-formatter.md)
+    yet a new workflow attempted to add it. Task orchestration should cross-reference
+    backlog status and git file existence before spawning workflows. The existing
+    file tracking showed obsidian.py committed in multiple prior commits.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -514,10 +513,11 @@ patterns:
   sample_count: 1
 - pattern: gate-0-validation/*
   insights:
-  - The dev agent discovered CLI wiring was already complete (discover_sessions, parse_session_file
-    routing). This demonstrates Gate 0 failure - the task was assigned without verifying
-    the feature didn't already exist. A pre-planning check like 'git ls-files --error-unmatch'
-    or code grep for the feature would have caught this before workflow launch.
+  - The task 'add-obsidian-formatter' targeted src/session_insights/formatters/obsidian.py
+    which already exists as a 10KB file with 17KB of compiled bytecode. Running 'git
+    ls-files --error-unmatch src/session_insights/formatters/obsidian.py' before workflow
+    launch would have detected this immediately. This is the same Gate 0 failure pattern
+    observed in cycles 5-12.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -551,5 +551,20 @@ patterns:
   recommended_workflow: null
   tags:
   - documentation
+  - technical
+  sample_count: 1
+- pattern: pydantic/*
+  insights:
+  - 'When a Pydantic model inherits properties from a base class (e.g., start_time,
+    end_time as @property), the subclass cannot store values via constructor unless
+    those properties are overridden as explicit Field definitions. The fix is to add
+    ''field_name: Type | None = None'' in the subclass to enable storage while maintaining
+    the property interface.'
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - pydantic
   - technical
   sample_count: 1

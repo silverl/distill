@@ -1,0 +1,30 @@
+agent_id: f6bdded7
+created_at: '2026-02-05T16:16:18.081855'
+message: 'CLI validated end-to-end on real session data. Found and fixed 2 bugs:
+
+
+  1. **CLI entry point bug (pyproject.toml)**: Changed `session_insights.cli:main`
+  to `session_insights.cli:app` - CLI now runs correctly
+
+
+  2. **Duration calculation bug (vermas.py)**: Added `duration_minutes` property override
+  to VermasSession - durations now calculate correctly (was showing 0/Unknown)
+
+
+  **Validation results:**
+
+  - CLI parses .vermas/ directory without errors (16 sessions found)
+
+  - Generated Obsidian notes have valid YAML frontmatter, wiki links, and markdown
+
+  - Daily summaries show accurate counts (16 sessions) and durations (52.3 min total)
+
+  - All 185 tests pass with 90% coverage
+
+
+  This validates parse_success_rate and obsidian_compatibility KPIs.'
+metadata: null
+role: dev
+signal: done
+signal_id: '77959742'
+workflow_id: mission-6e8e249c-cycle-6-execute-validate-cli-end-to-end
