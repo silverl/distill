@@ -1,10 +1,10 @@
 ---
-status: pending
+status: done
 priority: high
-workflow: 
-depends: ['create-package-structure']
+workflow: null
+depends:
+- create-package-structure
 ---
-
 # Implement basic CLI with Click
 
 Implement a working CLI skeleton using Click framework. Build on the package structure from the previous task.
