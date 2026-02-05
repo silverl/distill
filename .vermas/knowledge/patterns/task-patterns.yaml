@@ -1,10 +1,10 @@
 patterns:
 - pattern: testing/*
   insights:
-  - When adding caches to prevent duplicate processing (like _vermas_parsed_dirs to
-    prevent re-parsing the same .vermas directory), always expose a reset_vermas_cache()
-    function to clear the cache between tests. This prevents test pollution while
-    maintaining production performance.
+  - When adding caches to prevent duplicate processing (like _vermas_parsed_dirs),
+    always expose a reset_vermas_cache() function for test isolation. This allows
+    integration tests to run independently without cross-contamination from cached
+    state.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -15,11 +15,10 @@ patterns:
   sample_count: 1
 - pattern: architecture/*
   insights:
-  - When integrating multiple parsers that return different session models, create
-    a conversion function (_convert_parser_session_to_base) that maps parser-specific
-    messages to a common interface (ConversationTurn). This enables features like
-    --include-conversation to work uniformly across all parser types without modifying
-    the parsers themselves.
+  - Use a SESSION_PATTERNS dictionary to register multiple source directories (.claude/,
+    .codex/, .vermas/) with their corresponding parsers. The discover_sessions() function
+    iterates over patterns, and parse_session_file() dispatches to the correct parser
+    based on detected source type.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -30,11 +29,11 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - Complex integration tasks require multiple QA review cycles. First review catches
-    architectural gaps (missing parser dispatch, incomplete directory scanning). Second
-    review catches functional gaps (message-to-turn mapping for conversation display,
-    deduplication logic). Each QA signal should include specific issues and working
-    test commands.
+  - 'QA review in multiple iterations caught critical issues that unit tests missed:
+    message-to-turn mapping for conversation display and duplicate session prevention
+    when parsing VerMAS directories. The first review caught missing requirements,
+    the second caught integration edge cases. This pattern of incremental refinement
+    ensures production-quality code.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -102,17 +101,16 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - 'When tests fail due to environment configuration issues (e.g., missing pytest-cov
-    plugin), QA should include the exact working command in their signals: ''PYTHONPATH=src
-    python -m pytest -q -o addopts=""''. This prevents repeated debugging of the same
-    environment issue across dev-QA cycles and establishes a shared verification baseline.'
+  - When pytest fails due to missing pytest-cov plugin from addopts configuration,
+    use -o addopts="" to override. Combined with PYTHONPATH=src, this enables running
+    tests in environments without full dev dependencies installed.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - debugging
-  - process
+  - technical
   sample_count: 1
 - pattern: python/*
   insights:

@@ -1,12 +1,12 @@
 agents:
   general:
     learnings:
-    - Dev agent effectively addressed QA feedback in two iterations, adding message-to-turns
-      conversion and directory caching without over-engineering
-    - QA agent provided actionable feedback with specific technical issues (missing
-      message mapping, duplicate sessions) rather than vague complaints
-    - Watcher agent correctly identified workflow completion only after QA approval
-      signal, maintaining proper workflow state tracking
+    - QA (Codex agent) was thorough in identifying not just missing features but also
+      integration edge cases like empty conversations and duplicate sessions
+    - Dev responded quickly to QA feedback with targeted fixes rather than wholesale
+      rewrites, demonstrating efficient iteration
+    - Watcher agent provided useful workflow summary but was largely passive during
+      the dev-qa cycle
     strengths: []
     weaknesses: []
     best_practices: []
