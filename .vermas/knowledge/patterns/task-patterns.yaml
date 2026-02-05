@@ -31,11 +31,10 @@ patterns:
   sample_count: 1
 - pattern: verification/*
   insights:
-  - QA approval message explicitly verified 'Requirements satisfied' before confirming
-    tests pass. This validates the implementation meets the spec (print confirmation
-    message, validate directory exists, accept --dir flag with default) rather than
-    just checking that code runs. Earlier cycles failed because dev over-built beyond
-    spec requirements.
+  - QA's first review identified test assertions misaligned with new requirements
+    before attempting full test runs. Finding that tests expected 'missing --output'
+    errors when the spec now had defaults saved debugging time. Review code changes
+    against spec requirements before running test suites.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -46,17 +45,18 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - Dev signal included '186 tests pass' and QA verified same count, providing evidence
-    of consistent test execution across roles. This cross-validation catches scenarios
-    where dev and QA might run different test subsets or have environment differences
-    affecting test discovery.
+  - When changing CLI arguments from required to optional with defaults, existing
+    tests may assert 'missing argument' error behavior that no longer applies. QA's
+    'needs_revision' signal caught tests still expecting missing --output errors.
+    Always update test expectations to match new default behavior, converting negative
+    tests to positive assertions about default values.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - process
+  - technical
   sample_count: 1
 - pattern: code-recovery/*
   insights:
@@ -175,11 +175,11 @@ patterns:
   sample_count: 1
 - pattern: task-decomposition/*
   insights:
-  - 'After 5 consecutive CLI implementation failures due to monolithic tasks, breaking
-    work into single-purpose micro-tasks (argparse setup, then flags, then wiring)
-    enabled reliable completion. Each task had exactly ONE deliverable with clear
-    success criteria (e.g., ''print confirmation: Analyzing directory: {dir}''). The
-    atomic approach allowed dev to complete and QA to approve in under 10 minutes.'
+  - 'The task had exactly three acceptance criteria: (1) add --output argument with
+    default, (2) create directory if missing, (3) print confirmation message. This
+    atomic scope allowed dev to complete implementation quickly and QA to verify each
+    criterion explicitly. Following the pattern from cycle-5, small focused tasks
+    outperform monolithic implementations.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -332,13 +332,13 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - "The dev\u2192QA\u2192watcher signal chain (done\u2192approved\u2192complete)\
-    \ provides explicit verification at each stage. This workflow demonstrated the\
-    \ pattern working correctly: dev implemented with 186 tests passing, QA verified\
-    \ requirements and ran tests, watcher confirmed overall completion. The signal\
-    \ sequence creates an audit trail even when infrastructure fails."
+  - "The dev\u2192QA\u2192needs_revision\u2192dev\u2192done\u2192approved\u2192complete\
+    \ signal chain completed in under 10 minutes with exactly one revision. QA identified\
+    \ test misalignment early (stale assertions expecting required args), dev fixed\
+    \ both implementation and tests, then QA re-approved. This tight feedback loop\
+    \ avoided prolonged back-and-forth."
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -347,11 +347,11 @@ patterns:
   sample_count: 1
 - pattern: cli-development/*
   insights:
-  - When adding directory arguments to Typer CLI commands, use 'exists=True' parameter
-    for automatic validation rather than implementing manual os.path.exists() checks.
-    Dev noted '--dir argument already exists with default=. (2) Directory validation
-    via exists=True'. This leverages framework capabilities and provides consistent
-    error messages.
+  - When adding file/directory output arguments to CLI commands, use optional parameters
+    with sensible defaults (e.g., '--output' defaulting to './insights/') rather than
+    requiring explicit values. This improves user experience for common cases while
+    preserving flexibility. The pattern also includes creating the directory automatically
+    and printing a confirmation message to provide feedback.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null

@@ -1,12 +1,13 @@
 agents:
   general:
     learnings:
-    - Dev agent provided detailed implementation specifics in done signal (CLI behavior,
-      test count, example command) enabling efficient QA review
-    - QA agent completed verification and approval in under 3 minutes after dev signal,
-      demonstrating effective handoff
-    - Watcher agent correctly synthesized dev and QA outcomes in complete signal,
-      providing workflow summary
+    - Dev provided complete done signal with implementation details ('default=./insights/',
+      directory creation, confirmation message) enabling efficient QA review without
+      code archaeology
+    - QA correctly identified test-spec misalignment in first review (needs_revision
+      signal) rather than passing code that would fail in CI with outdated assertions
+    - Both agents coordinated efficiently - total workflow time of 455s with single
+      revision cycle demonstrates effective handoff protocol
     strengths: []
     weaknesses: []
     best_practices: []

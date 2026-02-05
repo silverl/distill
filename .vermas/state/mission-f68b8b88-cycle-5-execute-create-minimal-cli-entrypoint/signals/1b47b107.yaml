@@ -1,0 +1,10 @@
+agent_id: 7eb74888
+created_at: '2026-02-05T14:41:15.775280'
+message: 'Needs revision: CLI still Typer-based and entrypoint miswired; tests not
+  matching requirement; uv run session-insights --version produced no version output;
+  pytest failed due to missing pytest-cov plugin.'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 1b47b107
+workflow_id: mission-f68b8b88-cycle-5-execute-create-minimal-cli-entrypoint

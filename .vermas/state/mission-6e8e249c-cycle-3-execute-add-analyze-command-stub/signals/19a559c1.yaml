@@ -1,0 +1,11 @@
+agent_id: a467d0d3
+created_at: '2026-02-05T14:41:01.225125'
+message: 'QA: pytest shows 3 failures. New default output breaks TestCLIExitCodes.test_cli_missing_output
+  (tests/integration/test_integration.py#L332). Update expectation or keep output
+  required. Also observed failures in tests/parsers/test_vermas.py::TestVermasSession.test_session_duration_minutes
+  (#L209) and TestDurationTracking.test_session_has_start_end_times (#L1110).'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 19a559c1
+workflow_id: mission-6e8e249c-cycle-3-execute-add-analyze-command-stub
