@@ -1,10 +1,10 @@
 ---
-status: pending
+status: done
 priority: high
-workflow: 
-depends: ['create-package-structure']
+workflow: null
+depends:
+- create-package-structure
 ---
-
 # Create base parser interface and test fixture
 
 Create the parser base class and a simple test fixture. This establishes the pattern for all parsers.
