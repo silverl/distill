@@ -1,0 +1,21 @@
+{
+  "workflow_id": "mission-62ea732b-cycle-2-execute-implement-claude-parser",
+  "created_at": "2026-02-05T08:17:04.268964+00:00",
+  "agents": {
+    "dev": {
+      "session_id": "31ed9e2f-07d8-4e8e-93bb-d7d08e4364d6",
+      "agent_type": "claude",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    },
+    "watcher": {
+      "session_id": "1fe07729-c411-462b-8c00-6c14d98adbdf",
+      "agent_type": "claude",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    },
+    "qa": {
+      "session_id": "019c2cd8-e59b-7e80-836c-827c98bfbe5b",
+      "agent_type": "codex",
+      "cwd": "/Users/nikpatel/Documents/GitHub/vermas-experiments/session-insights"
+    }
+  }
+}

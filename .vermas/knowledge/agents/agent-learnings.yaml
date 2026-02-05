@@ -1,12 +1,12 @@
 agents:
   general:
     learnings:
-    - 'Dev agent performed well: completed implementation with 50 passing tests and
-      clear completion signal in ~3.5 minutes of the workflow'
-    - QA agent failed to even start or complete review phase - process died without
-      producing any signals
-    - Agent death occurred specifically in the QA role, suggesting potential issues
-      with tmux pane management or agent spawning for secondary agents
+    - Dev agent completed implementation with 50 passing tests and detailed completion
+      signal - good performance
+    - QA agent successfully identified substantive issues (entrypoint config, discovery
+      logic) but died after signaling needs_revision
+    - QA death occurred after productive review work, suggesting tmux session instability
+      rather than agent task failure
     strengths: []
     weaknesses: []
     best_practices: []

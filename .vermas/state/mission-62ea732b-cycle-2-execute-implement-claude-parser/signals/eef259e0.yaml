@@ -1,0 +1,10 @@
+agent_id: a97eedbf
+created_at: '2026-02-05T08:16:57.699327'
+message: 'QA approved. Parser now handles sessions/ subdir + .json extensions. Tests
+  pass with PYTHONPATH=src. Note: plain python -m pytest -q uses another worktree
+  in sys.path and fails; use PYTHONPATH or editable install.'
+metadata: null
+role: qa
+signal: approved
+signal_id: eef259e0
+workflow_id: mission-62ea732b-cycle-2-execute-implement-claude-parser

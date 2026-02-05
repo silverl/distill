@@ -1,0 +1,11 @@
+agent_id: a97eedbf
+created_at: '2026-02-05T08:12:52.704089'
+message: 'QA: parser does not handle .claude/projects/*/sessions/*.json; only globs
+  *.jsonl directly under project dir. Tests also lack coverage for sessions/ subdir
+  + .json. See src/session_insights/parsers/claude.py:84-100. python -m pytest -q
+  passed.'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 000b2271
+workflow_id: mission-62ea732b-cycle-2-execute-implement-claude-parser

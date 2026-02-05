@@ -1,9 +1,10 @@
 patterns:
 - pattern: testing/*
   insights:
-  - The dev agent ran 50 tests including integration tests covering the full pipeline
-    and CLI exit codes before signaling done. This thorough testing approach gives
-    high confidence that the implementation is correct, even when QA fails to review.
+  - 50 unit tests passed but the CLI entrypoint was broken - the console_scripts entry
+    in pyproject.toml pointed to a Typer callback function instead of the app object.
+    Integration testing of the actual installed CLI command (not just function calls)
+    is essential to catch configuration issues.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -28,16 +29,18 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - QA agent approval message explicitly states which commands were run and passed
-    ('uv run session-insights --help and uv run pytest passed'). This provides evidence-based
-    approval rather than subjective assessment, making it clear what was verified.
+  - 'The QA agent correctly identified two substantive issues: (1) the console script
+    entrypoint pointed to a callback function that doesn''t produce help output, and
+    (2) discover_sessions incorrectly scanned .claude directory for codex sources
+    instead of .codex. This demonstrates QA''s value in catching integration-level
+    bugs that unit tests miss.'
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - code-review
-  - process
+  - technical
   sample_count: 1
 - pattern: workflow/*
   insights:
