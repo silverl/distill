@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
@@ -66,16 +66,13 @@ def analyze_cmd(
         ),
     ] = Path("."),
     output: Annotated[
-        Path,
+        Optional[Path],
         typer.Option(
             "--output",
             "-o",
-            help="Output directory for Obsidian notes.",
-            file_okay=False,
-            dir_okay=True,
-            resolve_path=True,
+            help="Output directory for Obsidian notes. Defaults to ./insights/",
         ),
-    ] = ...,
+    ] = None,
     source: Annotated[
         list[str] | None,
         typer.Option(
@@ -104,6 +101,10 @@ def analyze_cmd(
     Scans the specified directory for AI assistant session files and generates
     Obsidian-compatible markdown notes.
     """
+    # Set default output directory if not provided
+    if output is None:
+        output = Path("./insights/")
+
     # Parse since date if provided
     since_date: date | None = None
     if since:
@@ -113,6 +114,10 @@ def analyze_cmd(
             console.print(f"[red]Error:[/red] Invalid date format: {since}")
             console.print("Use YYYY-MM-DD format (e.g., 2024-01-15)")
             raise typer.Exit(1)
+
+    # Create output directory if it doesn't exist and confirm
+    output.mkdir(parents=True, exist_ok=True)
+    console.print(f"Output will be written to: {output}")
 
     # Discover sessions
     with Progress(
@@ -173,8 +178,7 @@ def analyze_cmd(
         progress.add_task("Analyzing patterns...", total=None)
         result = analyze(all_sessions)
 
-    # Create output directory
-    output.mkdir(parents=True, exist_ok=True)
+    # Create subdirectories
     sessions_dir = output / "sessions"
     sessions_dir.mkdir(exist_ok=True)
 

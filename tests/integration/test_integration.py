@@ -329,8 +329,8 @@ class TestCLIExitCodes:
         # Should contain version info
         assert "session-insights" in result.stdout or "0.1.0" in result.stdout
 
-    def test_cli_missing_output(self, cli_path: Path, tmp_path: Path) -> None:
-        """Test CLI with missing required output option."""
+    def test_cli_default_output(self, cli_path: Path, tmp_path: Path) -> None:
+        """Test CLI uses default output directory when --output is not specified."""
         result = subprocess.run(
             [
                 sys.executable,
@@ -345,8 +345,9 @@ class TestCLIExitCodes:
             cwd=cli_path.parents[2],
             env={**os.environ, "PYTHONPATH": str(cli_path.parents[2] / "src")},
         )
-        # Should fail due to missing required --output
-        assert result.returncode != 0
+        # Should succeed with default output directory (./insights/)
+        assert result.returncode == 0
+        assert "Output will be written to:" in result.stdout
 
     def test_cli_invalid_date(
         self, cli_path: Path, tmp_path: Path, output_dir: Path

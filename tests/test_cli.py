@@ -33,7 +33,9 @@ class TestCLI:
         assert result.exit_code == 0
         assert "output" in result.output.lower()
 
-    def test_analyze_missing_path(self, runner: CliRunner) -> None:
-        """Test that analyze requires a session path."""
-        result = runner.invoke(app, ["analyze"])
-        assert result.exit_code != 0
+    def test_analyze_default_output(self, runner: CliRunner) -> None:
+        """Test that analyze uses default output directory when --output is not specified."""
+        result = runner.invoke(app, ["analyze", "--dir", "/tmp"])
+        # Should succeed (exit 0) even without --output, using default ./insights/
+        assert result.exit_code == 0
+        assert "Output will be written to:" in result.output
