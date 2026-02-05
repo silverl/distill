@@ -1,5 +1,6 @@
 """CLI interface for session-insights."""
 
+import json
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Optional
@@ -16,6 +17,8 @@ from session_insights.core import (
 )
 from session_insights.formatters.obsidian import ObsidianFormatter
 from session_insights.models import BaseSession
+from session_insights.parsers.claude import ClaudeParser
+from session_insights.parsers.codex import CodexParser
 
 app = typer.Typer(
     name="session-insights",
@@ -239,6 +242,80 @@ def analyze_cmd(
 
 # Register the analyze command with a cleaner name
 app.command(name="analyze")(analyze_cmd)
+
+
+@app.command(name="sessions")
+def sessions_cmd(
+    directory: Annotated[
+        Path,
+        typer.Option(
+            "--dir",
+            "-d",
+            help="Directory to scan for .claude/ and .codex/ session directories.",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ] = Path("."),
+) -> None:
+    """Discover sessions and print a JSON summary.
+
+    Scans the specified directory for .claude/ and .codex/ directories,
+    uses the existing parsers to extract sessions, and prints a simple
+    JSON summary with session count, total messages, and date range.
+
+    This is a minimal command to prove the CLI can use existing providers.
+    """
+    claude_parser = ClaudeParser()
+    codex_parser = CodexParser()
+
+    claude_sessions = []
+    codex_sessions = []
+
+    # Find .claude/ directory
+    claude_dir = directory / ".claude"
+    if claude_dir.exists() and claude_dir.is_dir():
+        claude_sessions = claude_parser.parse_directory(claude_dir)
+
+    # Find .codex/ directory
+    codex_dir = directory / ".codex"
+    if codex_dir.exists() and codex_dir.is_dir():
+        codex_sessions = codex_parser.parse_directory(codex_dir)
+
+    # Combine all sessions
+    all_sessions = claude_sessions + codex_sessions
+
+    # Calculate summary statistics
+    total_sessions = len(all_sessions)
+    total_messages = sum(len(s.messages) for s in all_sessions)
+
+    # Calculate date range
+    date_range_start: str | None = None
+    date_range_end: str | None = None
+    if all_sessions:
+        timestamps = [s.timestamp for s in all_sessions]
+        earliest = min(timestamps)
+        latest = max(timestamps)
+        date_range_start = earliest.isoformat()
+        date_range_end = latest.isoformat()
+
+    # Build summary
+    summary = {
+        "session_count": total_sessions,
+        "total_messages": total_messages,
+        "date_range": {
+            "start": date_range_start,
+            "end": date_range_end,
+        },
+        "sources": {
+            "claude": len(claude_sessions),
+            "codex": len(codex_sessions),
+        },
+    }
+
+    # Output JSON
+    console.print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":
