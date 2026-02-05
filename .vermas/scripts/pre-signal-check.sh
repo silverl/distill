@@ -9,6 +9,9 @@
 # This closes the verification gap that caused 4 consecutive failures
 # where code existed in worktrees but was never committed.
 #
+# Cycle 12 addition: Detects artifact-only commits (no src/ changes).
+# This prevents marking tasks "done" when only workflow artifacts were committed.
+#
 # Usage: .vermas/scripts/pre-signal-check.sh [deliverable1] [deliverable2] ...
 # Exit codes:
 #   0 = Ready to signal done
@@ -18,11 +21,14 @@ set -e
 
 # Parse flags
 ALLOW_NO_DELIVERABLES=false
+ALLOW_ARTIFACT_ONLY=false
 DELIVERABLES=()
 
 for arg in "$@"; do
     if [ "$arg" = "--allow-no-deliverables" ]; then
         ALLOW_NO_DELIVERABLES=true
+    elif [ "$arg" = "--allow-artifact-only" ]; then
+        ALLOW_ARTIFACT_ONLY=true
     else
         DELIVERABLES+=("$arg")
     fi
@@ -39,15 +45,17 @@ if [ $DELIVERABLE_COUNT -eq 0 ] && [ "$ALLOW_NO_DELIVERABLES" = false ]; then
     echo ""
     echo "Usage: pre-signal-check.sh <deliverable1> [deliverable2] ..."
     echo "       pre-signal-check.sh --allow-no-deliverables  # For docs-only changes"
+    echo "       pre-signal-check.sh --allow-artifact-only    # For workflow-only changes"
     echo ""
     echo "Examples:"
     echo "  pre-signal-check.sh src/module.py tests/test_module.py"
     echo "  pre-signal-check.sh --allow-no-deliverables  # Only if no code changes"
+    echo "  pre-signal-check.sh --allow-artifact-only src/config.py  # Workflow artifacts OK"
     exit 1
 fi
 
 if [ $DELIVERABLE_COUNT -gt 0 ]; then
-    TOTAL_STEPS=3
+    TOTAL_STEPS=4
 else
     TOTAL_STEPS=2
 fi
@@ -95,6 +103,37 @@ if [ $DELIVERABLE_COUNT -gt 0 ]; then
         echo "  ✓ $file"
     done
     echo "Deliverables: $DELIVERABLE_COUNT file(s) TRACKED"
+    echo ""
+fi
+
+# 4. Check for artifact-only commits (if deliverables provided)
+# This catches the pattern from Cycle 12 where tasks were marked "done"
+# but only workflow artifacts (.vermas/*) were committed, not actual code.
+if [ $DELIVERABLE_COUNT -gt 0 ] && [ "$ALLOW_ARTIFACT_ONLY" = false ]; then
+    echo "[4/$TOTAL_STEPS] Checking for source code changes..."
+
+    # Get the base branch (usually main)
+    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+    # Check if there are any changes to src/ or tests/ compared to base
+    SRC_DIFF=$(git diff "$BASE_BRANCH" -- src/ tests/ 2>/dev/null | head -1)
+
+    if [ -z "$SRC_DIFF" ]; then
+        echo ""
+        echo "WARNING: No changes to src/ or tests/ compared to $BASE_BRANCH"
+        echo ""
+        echo "This appears to be an artifact-only commit. The task produced"
+        echo "workflow files (.vermas/*, etc.) but no actual source code."
+        echo ""
+        echo "If this is intentional (e.g., docs-only or config changes):"
+        echo "  pre-signal-check.sh --allow-artifact-only <deliverables>"
+        echo ""
+        echo "Otherwise, this task may not have produced real value."
+        echo "Review what was actually delivered before signaling done."
+        echo ""
+        exit 1
+    fi
+    echo "Source changes: DETECTED"
     echo ""
 fi
 
