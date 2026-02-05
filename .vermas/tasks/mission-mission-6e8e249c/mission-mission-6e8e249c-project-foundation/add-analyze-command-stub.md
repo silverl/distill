@@ -1,9 +1,8 @@
 ---
-status: pending
+status: done
 priority: medium
-workflow: 
+workflow: null
 ---
-
 # Add analyze command stub to CLI
 
 Add a stub 'analyze' subcommand that accepts options but doesn't process yet:
