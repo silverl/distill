@@ -218,18 +218,17 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - The presence or absence of a .vermas/state/{workflow-id}/ directory indicates
-    whether the workflow reached the agent execution phase. No state directory means
-    the failure happened during workflow setup. A state directory with no signals
-    means agents started but couldn't complete. This diagnostic helps focus troubleshooting
-    efforts on the correct layer of the system.
+  - Before reimplementing failed features, run a diagnostic task to identify what's
+    actually broken. This workflow diagnosed that CLI code was complete but misconfigured
+    dependencies caused failures - saving time compared to rewriting working code.
+    The diagnostic discovered the issue was a 1-line fix, not architectural.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - debugging
-  - technical
+  - process
   sample_count: 1
 - pattern: integration/*
   insights:
@@ -361,10 +360,10 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - The watcher agent provided useful state summaries at key transitions, confirming
-    QA approval and dev commit. Having a dedicated observer role helps maintain shared
-    understanding of workflow progress and provides audit trail for debugging coordination
-    issues.
+  - 'The workflow demonstrated effective revision cycles: QA signaled ''needs_revision''
+    when the required deliverable (docs/cli-diagnostic.md) was missing, and dev responded
+    by creating it within seconds. This tight feedback loop ensures deliverables are
+    actually produced before signaling completion.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -540,4 +539,17 @@ patterns:
   tags:
   - agent-reliability
   - process
+  sample_count: 1
+- pattern: documentation/*
+  insights:
+  - The diagnostic report included clear verification steps (test import without dev
+    deps, test CLI execution, run test suite) that allow QA or future developers to
+    confirm fixes work. This makes the diagnostic actionable rather than just informational.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - documentation
+  - technical
   sample_count: 1
