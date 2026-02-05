@@ -8,70 +8,31 @@ agents:
 states:
   start:
     type: initial
-    auto_transition: validate
-
-  validate:
-    instructions: |
-      CRITICAL: Before implementing ANYTHING, validate the execution environment.
-      This validation MUST pass before any implementation work begins.
-      
-      Run these checks IN ORDER and report ALL failures:
-      
-      1. Verify Python environment:
-         `uv run python --version`
-         Expected: Python 3.11 or higher
-      
-      2. Verify project structure exists:
-         - Check if pyproject.toml exists in the project root
-         - Check if src/ directory exists
-         - If pyproject.toml is missing, signal "blocked" immediately
-      
-      3. Verify dependencies can be installed:
-         `uv sync`
-         If this fails, signal "blocked" with the error message
-      
-      4. Verify pytest works:
-         `uv run pytest --collect-only`
-         If collection fails, note the error but continue
-      
-      Signal "validated" if all critical checks pass.
-      Signal "blocked" if checks 1-3 fail.
-    on_signal:
-      validated:
-        from: engineer
-        next: engineering
-      blocked:
-        from: engineer
-        next: blocked
-    timeout:
-      duration: 5m
-      action: nudge
+    auto_transition: engineering
 
   engineering:
     instructions: |
       Implement the assigned task for the session-insights CLI tool.
       
-      CRITICAL: Work in small, testable increments:
-      1. First, create/verify the minimal file structure needed
-      2. Implement ONE function or class at a time
-      3. Write a test for it immediately
-      4. Run tests after EACH small change: `uv run pytest tests/ -x -q`
-      
       Follow Python best practices:
       - Use Pydantic v2 for models
-      - Click for CLI commands  
+      - Click for CLI commands
       - pytest for testing
       - Type hints throughout
       
-      If you encounter the SAME error twice:
-      - STOP implementing
-      - Document the exact error message and stack trace
-      - Describe what you tried
-      - Signal "needs_diagnosis" instead of continuing
+      For parsing tasks (e.g., vermas-parser):
+      - Start with the simplest case first and add complexity incrementally
+      - Write a failing test before implementing each parsing feature
+      - If the parsing logic is complex, break it into smaller helper functions
+      - Handle edge cases explicitly (empty input, malformed input, etc.)
+      
+      Run tests before signaling done:
+      `uv run pytest tests/ -x -q`
+      
+      If tests fail, fix them before signaling.
       
       Signal "done" when implementation is complete and tests pass.
-      Signal "blocked" if you encounter infrastructure issues.
-      Signal "needs_diagnosis" if stuck on a repeating failure.
+      Signal "blocked" if you encounter infrastructure issues or unsolvable dependencies.
     on_signal:
       done:
         from: engineer
@@ -79,50 +40,23 @@ states:
       blocked:
         from: engineer
         next: blocked
-      needs_diagnosis:
-        from: engineer
-        next: diagnose_failure
     timeout:
       duration: 30m
       action: nudge
 
-  diagnose_failure:
-    instructions: |
-      A task has failed multiple times. Before any more implementation attempts:
-      
-      1. Read the error logs and identify the EXACT failure point
-      2. Check if this is a dependency issue (missing package, wrong version)
-      3. Check if this is a prerequisite issue (missing files, incomplete setup)
-      4. Check if the task scope is too large and needs decomposition
-      
-      Document your findings clearly:
-      - What specific error occurred?
-      - What is the root cause?
-      - What prerequisite work is needed?
-      - Should the task be broken into subtasks?
-      
-      Signal "retry_with_fix" if you identified a fixable issue.
-      Signal "blocked" if human intervention is required.
-    on_signal:
-      retry_with_fix:
-        from: engineer
-        next: engineering
-      blocked:
-        from: engineer
-        next: blocked
-    timeout:
-      duration: 10m
-      action: escalate
-
   reviewing:
     instructions: |
-      Review the implementation for:
-      - Code quality and Python best practices
-      - Test coverage and test quality
-      - Proper error handling
-      - Type hint completeness
+      Review the implementation for correctness and quality.
       
-      Run the full test suite: `uv run pytest tests/ -x -q`
+      Verification steps:
+      1. Read all changed files
+      2. Run full test suite with coverage
+      3. Test CLI manually if applicable
+      4. Check for edge cases and error handling
+      
+      For parsing implementations:
+      - Verify edge cases are handled (empty, malformed, boundary conditions)
+      - Check that error messages are helpful for debugging
       
       Signal "approved" if quality is acceptable.
       Signal "needs_revision" with specific feedback if changes needed.
@@ -137,13 +71,13 @@ states:
       duration: 15m
       action: nudge
 
-  finalize:
-    type: terminal
-    on_entry:
-      - action: commit
-
   blocked:
     type: terminal
     on_entry:
       - action: log
-        message: Workflow blocked - requires human intervention or scope reduction
+        message: Workflow blocked - engineer signaled infrastructure or dependency issue
+
+  finalize:
+    type: terminal
+    on_entry:
+      - action: commit

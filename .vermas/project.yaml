@@ -17,7 +17,7 @@ kpi_measurement:
   parse_success_rate:
     type: command
     command: |
-      uv run pytest tests/ -q 2>&1 | grep -oE '[0-9]+ passed' | awk '{print 100}'
+      python -m pytest tests/ -q 2>&1 | grep -oE '[0-9]+ passed' | awk '{print 100}'
     parse_regex: "\\d+"
 
   # Obsidian compatibility (target: 100%)
@@ -25,5 +25,5 @@ kpi_measurement:
   obsidian_compatibility:
     type: command
     command: |
-      uv run python -c "from session_insights.formatters.obsidian import ObsidianFormatter; print(100)" 2>/dev/null || echo 0
+      python -c "from session_insights.formatters.obsidian import ObsidianFormatter; print(100)" 2>/dev/null || echo 0
     parse_regex: "\\d+"

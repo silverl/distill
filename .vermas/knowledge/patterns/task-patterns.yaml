@@ -1,10 +1,10 @@
 patterns:
 - pattern: testing/*
   insights:
-  - Tests may pass locally with specific environment configurations (PYTHONPATH=src,
-    pytest addopts overrides) but fail in default environments. QA should verify that
-    tests pass using the standard project test runner (e.g., 'uv run pytest' without
-    overrides) to catch configuration-dependent test failures before merge.
+  - 'The workflow achieved 94% coverage against a 90% target by adding tests incrementally
+    during implementation: 31 new CLI tests and 13 new formatter tests. Adding tests
+    alongside feature code rather than as a separate phase ensures coverage targets
+    are met naturally.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -15,11 +15,11 @@ patterns:
   sample_count: 1
 - pattern: architecture/*
   insights:
-  - 'For extensible parser systems, define a dataclass for the data structure (SessionData
-    with source, timestamp, content fields) and an abstract base class with the core
-    interface method (parse(path: Path) -> list[SessionData]). This establishes a
-    clear contract for all parser implementations while keeping the data model separate
-    from behavior.'
+  - 'When discovering sessions from multiple sources (claude, codex, vermas), scanning
+    all directories for all sources causes duplicate entries and overwrites. The fix
+    was to make discover_sessions() scan only source-specific directories: .claude
+    for claude sessions, .codex for codex sessions, etc. This separation of concerns
+    prevents data pollution.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -46,11 +46,10 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - 'The dev-QA collaboration completed a full revision cycle in under 5 minutes:
-    dev signaled done, QA identified blocking issues with specific technical details
-    (.gitignore conflict, test execution requirements), dev fixed within 90 seconds,
-    QA re-reviewed and approved. Providing specific, actionable feedback with file
-    paths and reproduction steps enables rapid iteration.'
+  - The QA agent used 'needs_revision' signal with detailed root cause analysis pointing
+    to specific files and test names. This enabled the dev to fix the issue in under
+    2 minutes. Including file paths (src/session_insights/core.py) and test names
+    in revision feedback dramatically speeds up resolution.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -254,5 +253,19 @@ patterns:
   recommended_workflow: null
   tags:
   - specification-compliance
+  - process
+  sample_count: 1
+- pattern: integration/*
+  insights:
+  - 'The task definition included a specific verification command: ''session-insights
+    analyze --dir . --output vault/ --analyze''. Using a concrete CLI invocation as
+    acceptance criteria ensures the dev tests the actual user-facing behavior and
+    the QA has a clear verification target.'
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - integration
   - process
   sample_count: 1

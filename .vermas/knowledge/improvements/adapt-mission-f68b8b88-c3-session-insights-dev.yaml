@@ -1,0 +1,22 @@
+id: adapt-mission-f68b8b88-c3-session-insights-dev
+date: '2026-02-05T03:40:00.501301'
+type: workflow_change
+target: workflow/session-insights-dev
+change: The workflow lacks a 'blocked' signal path and specific guidance for complex
+  parsing tasks. The implement-vermas-parser task has failed across multiple cycles.
+  Adding a blocked state and more specific engineering instructions for parsing tasks
+  will help agents signal infrastructure issues properly and provide better guidance
+  for the failing task.
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.75
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

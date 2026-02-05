@@ -1,13 +1,12 @@
 agents:
   general:
     learnings:
-    - QA agent identified a subtle but blocking issue (gitignore conflict) that would
-      have caused the fixture file to be untracked in version control - demonstrating
-      the value of thorough review beyond just 'tests pass'
-    - Dev agent responded to revision feedback quickly (90 seconds) with a targeted
-      fix, showing effective handling of specific QA feedback
-    - The watcher/orchestration properly captured the complete signal flow (done ->
-      needs_revision -> done -> approved -> complete) enabling audit trail
+    - QA agent (codex) provided actionable feedback with specific file paths and test
+      names, enabling rapid bug fixes
+    - Dev agent completed implementation with comprehensive tests before signaling
+      done, demonstrating mature development discipline
+    - The approval signal from QA included verification evidence ('146 passed, coverage
+      94%'), providing clear audit trail
     strengths: []
     weaknesses: []
     best_practices: []
