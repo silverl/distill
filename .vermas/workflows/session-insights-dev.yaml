@@ -1,0 +1,68 @@
+agents:
+- role: engineer
+- role: reviewer
+states:
+  engineering:
+    instructions: 'Implement the assigned task for the session-insights CLI tool.
+
+
+      Follow Python best practices:
+
+      - Use Pydantic v2 for models
+
+      - Click for CLI commands
+
+      - pytest for testing
+
+      - Type hints throughout
+
+
+      Run tests before signaling done:
+
+      `uv run pytest tests/ -x -q`
+
+
+      Signal "done" when implementation is complete and tests pass.'
+    on_signal:
+      done:
+        from: engineer
+        next: reviewing
+    timeout:
+      action: nudge
+      duration: 30m
+  finalize:
+    on_entry:
+    - action: commit
+    type: terminal
+  reviewing:
+    instructions: 'Review the implementation for correctness and quality.
+
+
+      Verification steps:
+
+      1. Read all changed files
+
+      2. Run full test suite with coverage
+
+      3. Test CLI manually if applicable
+
+      4. Check for edge cases and error handling
+
+
+      Signal "approved" if quality is acceptable.
+
+      Signal "needs_revision" with specific feedback if changes needed.'
+    on_signal:
+      approved:
+        from: reviewer
+        next: finalize
+      needs_revision:
+        from: reviewer
+        next: engineering
+    timeout:
+      action: nudge
+      duration: 15m
+  start:
+    auto_transition: engineering
+    type: initial
+workflow: session-insights-dev
