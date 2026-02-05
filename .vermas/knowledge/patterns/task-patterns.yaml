@@ -45,11 +45,11 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - QA initially failed pytest due to missing deps and pytest-cov addopts conflicts.
-    Resolved by creating fresh venv with '. .venv/bin/activate && pip install .[dev]'.
-    This pattern ensures clean test environment isolation from global Python state.
+  - Despite fixing 2 bugs, all 185 existing tests continued to pass with 90% coverage.
+    The bug fixes were implementation changes (entrypoint config, property addition)
+    that aligned with existing test expectations rather than requiring test modifications.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -218,17 +218,17 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - Before reimplementing failed features, run a diagnostic task to identify what's
-    actually broken. This workflow diagnosed that CLI code was complete but misconfigured
-    dependencies caused failures - saving time compared to rewriting working code.
-    The diagnostic discovered the issue was a 1-line fix, not architectural.
+  - Running CLI against real data (not just unit tests) exposed a pyproject.toml entrypoint
+    misconfiguration (cli:main vs cli:app) that wouldn't surface in test-only validation.
+    Production-like validation with actual data catches integration-level bugs that
+    unit tests miss.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - debugging
-  - process
+  - technical
   sample_count: 1
 - pattern: integration/*
   insights:
@@ -331,10 +331,10 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - Using structured meetings with the create_meeting, say, and create_action_item
-    tools allows agents to collaboratively investigate failures and document findings.
-    The dev agent created 3 specific action items with clear descriptions and assigned
-    roles, preserving institutional knowledge.
+  - The dev agent signaled 'done' with detailed fix descriptions, QA validated in
+    under 2 minutes, then signaled 'approved'. This async signal flow completed faster
+    (316s total) than meeting-heavy alternatives while maintaining quality through
+    structured verification.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -555,16 +555,30 @@ patterns:
   sample_count: 1
 - pattern: pydantic/*
   insights:
-  - 'When a Pydantic model inherits properties from a base class (e.g., start_time,
-    end_time as @property), the subclass cannot store values via constructor unless
-    those properties are overridden as explicit Field definitions. The fix is to add
-    ''field_name: Type | None = None'' in the subclass to enable storage while maintaining
-    the property interface.'
+  - When a Pydantic subclass needs different calculation logic than its base class
+    property, add an explicit property override in the subclass. VermasSession.duration_minutes
+    was added to override BaseSession's calculation that returned 0/Unknown for sessions
+    with different time field semantics.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - pydantic
   - technical
+  sample_count: 1
+- pattern: validation/*
+  insights:
+  - 'Effective CLI validation verifies: (1) entry point executes without import errors,
+    (2) parser produces expected session counts from real data, (3) output format
+    has valid structure (YAML frontmatter, markdown), (4) aggregations calculate correctly
+    (durations, counts). This 4-point check validated parse_success_rate and obsidian_compatibility
+    KPIs.'
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - validation
+  - process
   sample_count: 1

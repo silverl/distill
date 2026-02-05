@@ -1,12 +1,12 @@
 agents:
   general:
     learnings:
-    - Dev agent terminated unexpectedly during a Pydantic model fix task, suggesting
-      either resource exhaustion or a blocking operation that caused the CLI to exit
-    - The watcher agent pattern (separate agent monitoring workflow progress) was
-      active but couldn't prevent the workflow failure once the dev agent died
-    - Multi-agent workflows on VerMAS are vulnerable to single-agent failures - no
-      automatic recovery mechanism exists
+    - Dev agent provided highly detailed 'done' signal messages that explained exactly
+      what was fixed and why, enabling fast QA verification without additional back-and-forth
+    - QA agent (Codex-based) efficiently ran pytest and confirmed changes, signaling
+      'approved' in under 2 minutes after dev's done signal
+    - Watcher agent successfully coordinated workflow completion, ensuring both dev
+      and QA signals were captured before marking workflow complete
     strengths: []
     weaknesses: []
     best_practices: []
