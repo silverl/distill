@@ -1,25 +1,24 @@
 """Note content richness KPI measurer.
 
-Runs the CLI to generate Obsidian notes, then reads each generated note file
-and scores it against a checklist of expected content fields.  Reports
-percentage of fields present across all notes.
+Generates Obsidian notes via the analysis pipeline, writes them to disk,
+then reads each generated note file and scores it against a checklist of
+expected content fields.  Reports percentage of fields present across all
+notes.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
-import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
 
+from session_insights.core import discover_sessions, parse_session_file
+from session_insights.formatters.obsidian import ObsidianFormatter
 from session_insights.measurers.base import KPIResult, Measurer
-
-_SRC_DIR = str(Path(__file__).parents[2])
+from session_insights.parsers.models import BaseSession
 
 # ---------------------------------------------------------------------------
 # Field checklists – strings to search for in the generated .md note files
@@ -130,16 +129,26 @@ def _create_sample_vermas_dir(base: Path) -> None:
     (agents_dir / "agent-learnings.yaml").write_text(yaml.dump(learnings_data))
 
 
-def _run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
-    """Run the session-insights CLI as a subprocess."""
-    return subprocess.run(
-        [sys.executable, "-m", "session_insights", *args],
-        capture_output=True,
-        text=True,
-        cwd=cwd,
-        env={**os.environ, "PYTHONPATH": _SRC_DIR},
-        timeout=30,
-    )
+def _generate_notes_to_disk(
+    sessions: list[BaseSession], output_dir: Path
+) -> list[Path]:
+    """Format sessions into Obsidian notes and write them to disk.
+
+    Returns list of generated note file paths.
+    """
+    sessions_dir = output_dir / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    formatter = ObsidianFormatter(include_conversation=True)
+    written: list[Path] = []
+
+    for session in sessions:
+        note_content = formatter.format_session(session)
+        note_path = sessions_dir / f"{session.note_name}.md"
+        note_path.write_text(note_content, encoding="utf-8")
+        written.append(note_path)
+
+    return written
 
 
 def _detect_source(note_path: Path, content: str) -> str:
@@ -147,7 +156,6 @@ def _detect_source(note_path: Path, content: str) -> str:
     name = note_path.stem.lower()
     if name.startswith("vermas-"):
         return "vermas"
-    # Check frontmatter source field
     if "source: vermas" in content:
         return "vermas"
     if "source: claude" in content:
@@ -183,8 +191,8 @@ def score_note_file(note_path: Path) -> tuple[str, dict[str, bool]]:
 class NoteContentRichnessMeasurer(Measurer):
     """Measures percentage of expected content fields present in generated notes.
 
-    Workflow: create sample data -> run CLI to generate notes -> read the
-    generated .md files -> score each file against the field checklist.
+    Workflow: create sample data -> parse sessions -> format to note files on
+    disk -> read each .md file -> score against field checklist.
     """
 
     KPI_NAME = "note_content_richness"
@@ -198,7 +206,6 @@ class NoteContentRichnessMeasurer(Measurer):
     def measure_from_note_files(self, note_dir: Path) -> KPIResult:
         """Measure richness from pre-generated note files on disk."""
         note_files = list(note_dir.glob("**/*.md"))
-        # Exclude index.md and daily summaries — only score session notes
         note_files = [
             f
             for f in note_files
@@ -207,46 +214,29 @@ class NoteContentRichnessMeasurer(Measurer):
         return self._score_note_files(note_files)
 
     def _measure_from_directory(self, base: Path) -> KPIResult:
-        """Set up sample data, run CLI, read generated notes, and score."""
+        """Set up sample data, run pipeline, write notes, and score."""
         _create_sample_claude_dir(base)
         _create_sample_vermas_dir(base)
 
+        # Parse sessions using the core pipeline
+        all_sessions: list[BaseSession] = []
+        discovered = discover_sessions(base, sources=None)
+        for src, paths in discovered.items():
+            for path in paths:
+                all_sessions.extend(parse_session_file(path, src))
+
+        if not all_sessions:
+            return KPIResult(
+                kpi=self.KPI_NAME,
+                value=0.0,
+                target=self.TARGET,
+                details={"error": "no sessions parsed"},
+            )
+
+        # Generate note files on disk
         output_dir = base / "output"
+        note_files = _generate_notes_to_disk(all_sessions, output_dir)
 
-        # Run the CLI to generate Obsidian notes
-        result = _run_cli(
-            "analyze",
-            "--dir",
-            str(base),
-            "--output",
-            str(output_dir),
-            "--include-conversation",
-            cwd=base,
-        )
-
-        if result.returncode != 0:
-            return KPIResult(
-                kpi=self.KPI_NAME,
-                value=0.0,
-                target=self.TARGET,
-                details={
-                    "error": "CLI failed",
-                    "returncode": result.returncode,
-                    "stderr": result.stderr[:300],
-                },
-            )
-
-        # Collect generated session note files
-        sessions_dir = output_dir / "sessions"
-        if not sessions_dir.exists():
-            return KPIResult(
-                kpi=self.KPI_NAME,
-                value=0.0,
-                target=self.TARGET,
-                details={"error": "no sessions directory generated"},
-            )
-
-        note_files = list(sessions_dir.glob("*.md"))
         if not note_files:
             return KPIResult(
                 kpi=self.KPI_NAME,

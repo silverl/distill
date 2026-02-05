@@ -96,10 +96,10 @@ class TestScoreVermasNote:
         assert all(scores.values())
 
     def test_score_partial_note(self, tmp_path: Path) -> None:
-        """Partial vermas note should have only task_description present."""
+        """Partial vermas note without description content should score False."""
         note = _write_note(tmp_path / "vermas-partial.md", PARTIAL_VERMAS_NOTE)
         scores = score_vermas_note(note)
-        assert scores["task_description"]  # has "## Task Details"
+        assert not scores["task_description"]  # has ## Task Details but no ### Description
         assert not scores["signals"]  # no "## Agent Signals"
         assert not scores["learnings"]  # no "## Learnings"
         assert not scores["cycle_info"]  # no "**Cycle:**"
@@ -157,12 +157,12 @@ class TestVermasTaskVisibilityMeasurer:
         assert result.value == 100.0
 
     def test_partial_note_scores_below_100(self, tmp_path: Path) -> None:
-        """Partial vermas note should score < 100%."""
+        """Partial vermas note should score 0% (no ### Description content)."""
         note = _write_note(tmp_path / "vermas-partial.md", PARTIAL_VERMAS_NOTE)
         measurer = VermasTaskVisibilityMeasurer()
         result = measurer.measure_from_note_files([note])
-        # Only task_description present => 1/4 = 25%
-        assert result.value == 25.0
+        # No fields present => 0/4 = 0%
+        assert result.value == 0.0
 
     def test_empty_note_scores_0(self, tmp_path: Path) -> None:
         """Empty note should score 0%."""
