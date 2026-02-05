@@ -1,9 +1,8 @@
 ---
-status: pending
+status: done
 priority: medium
-workflow: 
+workflow: null
 ---
-
 # Implement Obsidian markdown formatter
 
 Implement Obsidian-compatible markdown output:
