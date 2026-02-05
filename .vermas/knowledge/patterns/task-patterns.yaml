@@ -1,10 +1,10 @@
 patterns:
 - pattern: testing/*
   insights:
-  - 'The test suite covered 17 scenarios including: valid session parsing, index-based
-    parsing, tool call extraction, thinking content extraction, malformed JSON handling,
-    empty files, nonexistent paths, and integration with real session structures.
-    Testing edge cases upfront reduces QA rejection rate.'
+  - The pyproject.toml has '--cov' flags in pytest addopts, requiring pytest-cov to
+    be installed. When dev dependencies are not installed (e.g., running 'pytest -q'
+    without dev extras), the test command fails entirely. Consider making coverage
+    optional or checking for the plugin before enabling coverage flags.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -15,11 +15,12 @@ patterns:
   sample_count: 1
 - pattern: architecture/*
   insights:
-  - Project uses Click library for CLI with a main entry point and analyze subcommand.
-    Entry point configured in pyproject.toml as session_insights.cli:main. This modular
-    structure allows adding new subcommands without modifying the main CLI structure.
+  - 'The implemented core.py uses a clean pipeline: discover_sessions() finds files
+    by source patterns, parse_session_file() converts to BaseSession objects, and
+    analyze() computes statistics and detects patterns. This separation of concerns
+    enables unit testing each stage independently.'
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -41,11 +42,12 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - The watcher agent monitors both dev and QA progress, emitting status updates at
-    key transitions (dev working, dev done, QA reviewing, QA approved). This creates
-    a clear audit trail and helps identify bottlenecks in multi-agent workflows.
+  - The dev agent created cli.py and core.py with substantial implementation but left
+    them as untracked files. QA agent found no implementation because it checked the
+    committed branch state. Dev agents must always run 'git add' and 'git commit'
+    before signaling 'done' to QA.
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -94,4 +96,18 @@ patterns:
   tags:
   - implementation
   - technical
+  sample_count: 1
+- pattern: debugging/*
+  insights:
+  - When QA reports 'no implementation found' but dev claims work is done, first check
+    'git status' in the worktree. Untracked or unstaged files indicate the dev agent
+    completed code but failed to commit it. This is a common failure mode when agents
+    focus on implementation and forget the commit step.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - debugging
+  - process
   sample_count: 1

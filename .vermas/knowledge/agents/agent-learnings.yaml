@@ -1,13 +1,13 @@
 agents:
   general:
     learnings:
-    - Dev agent completed substantial implementation work (parser code + models +
-      17 tests) but failed to maintain heartbeat during the final phase, resulting
-      in premature termination
-    - The tmux session 'vermas-agents-e-parser-d176' was terminated, suggesting either
-      the agent process crashed or was killed by workflow timeout
-    - No workflow signals were recorded for implement-claude-parser (unlike successful
-      workflows which show dev done -> QA approved -> dev complete signal chain)
+    - Dev agent completed substantial implementation (cli.py with 237 lines, core.py
+      with 299 lines, integration test) but failed at the critical commit step
+    - QA agent correctly identified the missing implementation by running tests and
+      checking for expected files, but couldn't diagnose the root cause (uncommitted
+      files vs missing code)
+    - The workflow lacks a validation step between dev 'done' signal and QA start
+      to verify commits exist
     strengths: []
     weaknesses: []
     best_practices: []
