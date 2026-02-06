@@ -1,19 +1,18 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - "This task was scoped to exactly one thing: wire an existing formatter into an\
-    \ existing pipeline. At +44 LOC across 3 files and 244 seconds total, it completed\
-    \ cleanly because all components already existed. The task avoided scope creep\
-    \ by not adding new tests, new formatters, or new features \u2014 just the integration\
-    \ glue. Decomposing work into implementation-then-wiring stages enables reliable\
-    \ delivery."
+  - The wire-weekly-digest-pipeline task (commit c29c088c) succeeded by importing
+    and calling an existing WeeklyDigestFormatter rather than building new functionality.
+    The +44 LOC change across 3 files was small, focused, and delivered real working
+    code. Integration-style tasks that wire existing components have a much higher
+    success rate than greenfield implementation tasks in this project.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - process
+  - technical
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -47,11 +46,10 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - "The only test change was updating an import statement in test_full_pipeline.py\
-    \ to include generate_weekly_notes. This minimal test touch is appropriate for\
-    \ wiring tasks where the underlying components are already tested \u2014 it ensures\
-    \ the new function is importable and available without duplicating existing unit\
-    \ test coverage of WeeklyDigestFormatter and group_sessions_by_week."
+  - Creating a dedicated test file (test_verify_all_kpis.py, +257 LOC) that programmatically
+    verifies all mission KPIs provides a reusable, repeatable gate. This approach
+    converts subjective 'done' signals into objective pass/fail checks. The test suite
+    caught failures in 4/5 KPIs that would otherwise have been claimed as passing.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -136,11 +134,11 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - The workflow used a dev agent (Claude) for implementation and a QA agent (Codex)
-    for validation within the same 244-second execution. Both agents co-signed the
-    commit message 'Task completed by dev-qa collaboration'. Having QA integrated
-    into the delivery workflow rather than as a separate post-hoc review step reduces
-    cycle time while maintaining quality gates.
+  - QA agent correctly flagged the final-kpi-verification task as needs_revision because
+    KPI_FINAL.md was never created despite being a stated deliverable. This QA gate
+    prevented a false 'done' signal from propagating. The pattern shows that having
+    a separate QA agent with clear deliverable expectations catches omissions that
+    the dev agent misses when self-certifying completion.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -338,11 +336,11 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - This workflow committed test code directly to main (commit cb074644) rather than
-    using a feature branch merge. The code landed successfully with all 495 tests
-    passing. This continues the project's proven pattern where 10/10 direct-to-main
-    deliveries succeeded vs 0/11 branch merges. For this project's workflow, branch
-    merges are a known anti-pattern.
+  - Running three fix tasks in parallel (narrative, project-names, coverage) resulted
+    in all three producing artifact-only commits. When tasks run in parallel, there
+    is no sequential checkpoint to catch the pattern early. A serial ordering with
+    verification after each task would have caught the first artifact-only commit
+    and prevented the subsequent two from repeating the same failure mode.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -751,11 +749,12 @@ patterns:
   sample_count: 1
 - pattern: code-delivery/*
   insights:
-  - When the workflow infrastructure uses git worktrees, dev agents commit to task
-    branches rather than main. The 'Complete task' commit on main captures only workflow
-    artifacts (.vermas/, insights/, .worktrees/) without source code. This is the
-    persistent root cause of the merge-drops-source failure mode (12+ occurrences).
-    Direct-to-main commits bypass this entirely.
+  - "Three parallel fix tasks (fix-narrative-generation, fix-project-name-derivation,\
+    \ boost-test-coverage-to-90) all produced commits with zero changes to src/ or\
+    \ tests/ directories \u2014 only workflow metadata. This is the 12th-14th occurrence\
+    \ of artifact-only delivery in this project. The pattern persists even with pre-signal-check.sh\
+    \ in place, suggesting the check is not being enforced during multi-agent parallel\
+    \ task execution."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null

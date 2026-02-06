@@ -8,7 +8,7 @@ total_duration_minutes: 0.0
 tags:
   - "#ai-session"
   - "#weekly-digest"
-created: 2026-02-06T11:39:43
+created: 2026-02-06T11:43:59
 ---
 # Weekly Digest: 2024-W03 (2024-01-15 to 2024-01-21)
 

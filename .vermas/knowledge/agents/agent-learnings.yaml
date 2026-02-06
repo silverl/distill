@@ -1,13 +1,16 @@
 agents:
   general:
     learnings:
-    - "Dev agent (Claude) produced clean, minimal implementation that followed existing\
-      \ patterns (generate_project_notes \u2192 generate_weekly_notes) \u2014 pattern\
-      \ mimicry reduces design risk."
-    - QA agent (Codex) provided validation within the same workflow execution, enabling
-      the fast 244-second turnaround without sacrificing review quality.
-    - Watcher agent monitored the collaboration, adding observability to the multi-agent
-      workflow without interfering with execution.
+    - "The dev agent successfully delivered real code in 2/7 tasks (wire-weekly +44\
+      \ LOC, KPI test suite +257 LOC) but produced artifact-only commits for 3 fix\
+      \ tasks and the final verification \u2014 a 29% real-code delivery rate."
+    - The QA agent performed its gating role effectively by flagging the missing KPI_FINAL.md
+      deliverable, but did not catch the 3 earlier artifact-only fix commits that
+      had zero source changes.
+    - "The watcher agent's role was invisible in the commit trail \u2014 no evidence\
+      \ of workflow-level intervention when parallel tasks all produced artifact-only\
+      \ commits, suggesting the watcher either lacked enforcement capability or did\
+      \ not detect the pattern."
     strengths: []
     weaknesses: []
     best_practices: []

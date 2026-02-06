@@ -8,7 +8,7 @@ total_duration_minutes: 0.0
 tags:
   - "#ai-session"
   - "#weekly-digest"
-created: 2026-02-06T11:39:43
+created: 2026-02-06T11:44:00
 ---
 # Weekly Digest: 2026-W06 (2026-02-02 to 2026-02-08)
 
