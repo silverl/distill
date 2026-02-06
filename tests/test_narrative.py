@@ -75,7 +75,7 @@ class TestGenerateNarrative:
             session_id="brief",
             start_time=start,
             end_time=start + timedelta(seconds=30),
-            summary="Quick check",
+            summary="Quick check on the configuration files and settings",
         )
         narrative = generate_narrative(session)
         assert "brief interaction" in narrative
@@ -95,8 +95,8 @@ class TestGenerateNarrative:
         session = BaseSession(
             session_id="task",
             start_time=datetime(2024, 6, 15, 10, 0, 0, tzinfo=timezone.utc),
-            summary="Some summary",
-            task_description="Implement user auth",
+            summary="Some summary about the project and its features",
+            task_description="Implement user auth with JWT token validation",
         )
         narrative = generate_narrative(session)
         assert "Implement user auth" in narrative

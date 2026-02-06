@@ -355,9 +355,10 @@ class ClaudeParser:
                 )
             session.outcomes = outcomes
 
-        # Generate narrative from summary
-        if not session.narrative and session.summary:
-            session.narrative = session.summary
+        # Generate narrative from session metadata
+        from session_insights.narrative import enrich_narrative
+
+        enrich_narrative(session)
 
         # Auto-tag based on content
         if not session.tags:
