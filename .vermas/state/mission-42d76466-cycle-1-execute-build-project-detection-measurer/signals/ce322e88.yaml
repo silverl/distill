@@ -1,0 +1,15 @@
+agent_id: 23ee86d6
+created_at: '2026-02-06T08:06:05.040216'
+message: 'Implemented project_detection KPI measurer and fixed parser detection. Created:
+  (1) ProjectDetectionMeasurer in measurers/project_detection.py - creates sample
+  sessions, measures % with valid project fields, target=95%, (2) Shared derive_project_from_cwd()
+  in parsers/project_utils.py - handles root paths, home dirs, recognizes GitHub/Projects/repos
+  parent dirs, (3) Fixed claude.py and codex.py to use the new robust detection, (4)
+  Added project derivation to vermas.py from signal metadata and .vermas parent dir,
+  (5) 25 new unit tests (18 for project_utils, 7 for measurer). All 465 tests pass
+  with 94% coverage. Committed as e0489822.'
+metadata: null
+role: dev
+signal: done
+signal_id: ce322e88
+workflow_id: mission-42d76466-cycle-1-execute-build-project-detection-measurer

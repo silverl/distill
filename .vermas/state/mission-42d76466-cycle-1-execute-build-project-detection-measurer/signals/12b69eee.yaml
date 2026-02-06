@@ -1,0 +1,10 @@
+agent_id: 23ee86d6
+created_at: '2026-02-06T08:12:47.660671'
+message: Task complete. Built project_detection KPI measurer, fixed parser detection
+  in claude/codex/vermas with robust derive_project_from_cwd(), added home directory
+  rejection, 28 new tests. All 468 tests pass.
+metadata: null
+role: dev
+signal: complete
+signal_id: 12b69eee
+workflow_id: mission-42d76466-cycle-1-execute-build-project-detection-measurer
