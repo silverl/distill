@@ -7,6 +7,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from session_insights.formatters.project import (
+    ProjectFormatter,
+    group_sessions_by_project,
+)
 from session_insights.parsers import ClaudeParser, CodexParser, VermasParser
 from session_insights.parsers.models import BaseSession
 
@@ -197,6 +201,42 @@ def analyze(sessions: list[BaseSession]) -> AnalysisResult:
         stats=stats,
         patterns=patterns,
     )
+
+
+def generate_project_notes(
+    sessions: list[BaseSession],
+    output_dir: Path,
+) -> list[Path]:
+    """Generate per-project Obsidian notes from analyzed sessions.
+
+    Groups sessions by project, generates a markdown note for each real
+    project (excluding '(unknown)' and '(unassigned)'), and writes them
+    to output_dir/projects/.
+
+    Args:
+        sessions: All parsed sessions.
+        output_dir: Root output directory. Notes go in output_dir/projects/.
+
+    Returns:
+        List of written project note file paths.
+    """
+    projects_dir = output_dir / "projects"
+    projects_dir.mkdir(parents=True, exist_ok=True)
+
+    groups = group_sessions_by_project(sessions)
+    formatter = ProjectFormatter()
+    written: list[Path] = []
+
+    for project_name, project_sessions in groups.items():
+        if project_name in ("(unknown)", "(unassigned)"):
+            continue
+        note_content = formatter.format_project_note(project_name, project_sessions)
+        note_name = formatter.note_name(project_name)
+        note_path = projects_dir / f"{note_name}.md"
+        note_path.write_text(note_content, encoding="utf-8")
+        written.append(note_path)
+
+    return written
 
 
 # Fields checked for content richness / field coverage

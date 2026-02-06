@@ -6,7 +6,7 @@ Obsidian markdown notes with timelines, milestones, and summaries.
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime
 
 from session_insights.formatters.templates import (
@@ -166,6 +166,48 @@ class ProjectFormatter:
                     status = "done" if o.success else "pending"
                     lines.append(f"- [{status}] {o.description}")
             lines.append("")
+
+        # Major Milestones (grouped by week)
+        lines.append("## Major Milestones")
+        lines.append("")
+        weeks: dict[str, list[BaseSession]] = defaultdict(list)
+        for s in sessions:
+            week_key = s.timestamp.strftime("%Y-W%W")
+            weeks[week_key].append(s)
+        for week_key in sorted(weeks):
+            week_sessions = weeks[week_key]
+            date_range = (
+                f"{week_sessions[0].timestamp.strftime('%Y-%m-%d')} - "
+                f"{week_sessions[-1].timestamp.strftime('%Y-%m-%d')}"
+            )
+            lines.append(f"### {week_key} ({date_range})")
+            lines.append("")
+            for s in week_sessions:
+                summary = s.summary or "Session"
+                lines.append(f"- {summary}")
+            lines.append("")
+
+        # Key Decisions (extracted from session outcomes)
+        lines.append("## Key Decisions")
+        lines.append("")
+        decisions = [
+            o for s in sessions for o in s.outcomes if o.success
+        ]
+        if decisions:
+            for d in decisions:
+                lines.append(f"- {d.description}")
+        else:
+            lines.append("- No key decisions recorded")
+        lines.append("")
+
+        # Related Sessions (linked)
+        lines.append("## Related Sessions")
+        lines.append("")
+        for s in sessions:
+            date_str = s.timestamp.strftime("%Y-%m-%d %H:%M")
+            link = format_obsidian_link(s.note_name, s.summary or s.note_name)
+            lines.append(f"- {date_str}: {link}")
+        lines.append("")
 
         # Files modified across all sessions
         all_files: Counter[str] = Counter()

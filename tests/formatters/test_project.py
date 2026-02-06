@@ -182,3 +182,26 @@ class TestProjectFormatter:
         assert "## Activity Tags" in note
         assert "#feature" in note
         assert "#testing" in note
+
+    def test_format_project_note_has_milestones(
+        self, formatter: ProjectFormatter, project_sessions: list[BaseSession]
+    ) -> None:
+        note = formatter.format_project_note("my-app", project_sessions)
+        assert "## Major Milestones" in note
+        # Sessions grouped by week
+        assert "2024-W" in note
+
+    def test_format_project_note_has_key_decisions(
+        self, formatter: ProjectFormatter, project_sessions: list[BaseSession]
+    ) -> None:
+        note = formatter.format_project_note("my-app", project_sessions)
+        assert "## Key Decisions" in note
+        assert "Did work" in note
+
+    def test_format_project_note_has_related_sessions(
+        self, formatter: ProjectFormatter, project_sessions: list[BaseSession]
+    ) -> None:
+        note = formatter.format_project_note("my-app", project_sessions)
+        assert "## Related Sessions" in note
+        # Should contain obsidian links to sessions
+        assert "[[" in note

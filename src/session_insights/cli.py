@@ -16,13 +16,10 @@ from session_insights.core import (
     compute_field_coverage,
     compute_richness_score,
     discover_sessions,
+    generate_project_notes,
     parse_session_file,
 )
 from session_insights.formatters.obsidian import ObsidianFormatter
-from session_insights.formatters.project import (
-    ProjectFormatter,
-    group_sessions_by_project,
-)
 from session_insights.models import BaseSession
 from session_insights.parsers.claude import ClaudeParser
 from session_insights.parsers.codex import CodexParser
@@ -471,24 +468,9 @@ def analyze_cmd(
         daily_path = daily_dir / f"daily-{summary_date.isoformat()}.md"
         daily_path.write_text(daily_content, encoding="utf-8")
 
-    # Write project notes
-    projects_dir = output / "projects"
-    projects_dir.mkdir(exist_ok=True)
-
-    project_groups = group_sessions_by_project(all_sessions)
-    project_formatter = ProjectFormatter()
-    project_count = 0
-
-    for project_name, project_sessions in project_groups.items():
-        if project_name in ("(unknown)", "(unassigned)"):
-            continue
-        note_content = project_formatter.format_project_note(
-            project_name, project_sessions
-        )
-        note_name = project_formatter.note_name(project_name)
-        note_path = projects_dir / f"{note_name}.md"
-        note_path.write_text(note_content, encoding="utf-8")
-        project_count += 1
+    # Write project notes via core pipeline
+    project_note_files = generate_project_notes(all_sessions, output)
+    project_count = len(project_note_files)
 
     # Write index.md linking all sessions
     index_content = _generate_index(all_sessions, daily_sessions, result)

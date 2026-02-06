@@ -70,6 +70,9 @@ class TestScoreProjectNote:
         assert scores["has_timeline"]
         assert scores["has_session_count"]
         assert scores["has_session_links"]
+        assert scores["has_milestones"]
+        assert scores["has_key_decisions"]
+        assert scores["has_related_sessions"]
 
     def test_score_empty_note(self, tmp_path: Path) -> None:
         """An empty note should fail all checks."""
@@ -79,6 +82,9 @@ class TestScoreProjectNote:
         assert not scores["has_timeline"]
         assert not scores["has_session_count"]
         assert not scores["has_session_links"]
+        assert not scores["has_milestones"]
+        assert not scores["has_key_decisions"]
+        assert not scores["has_related_sessions"]
 
     def test_score_partial_note(self, tmp_path: Path) -> None:
         """A note with only a timeline section should partially pass."""

@@ -15,11 +15,12 @@ from pathlib import Path
 
 import yaml
 
-from session_insights.core import discover_sessions, parse_session_file
-from session_insights.formatters.project import (
-    ProjectFormatter,
-    group_sessions_by_project,
+from session_insights.core import (
+    discover_sessions,
+    generate_project_notes,
+    parse_session_file,
 )
+from session_insights.formatters.project import group_sessions_by_project
 from session_insights.measurers.base import KPIResult, Measurer
 from session_insights.parsers.models import BaseSession
 
@@ -28,6 +29,9 @@ PROJECT_NOTE_SECTIONS: list[tuple[str, str]] = [
     ("has_timeline", "## Session Timeline"),
     ("has_session_count", "**Total Sessions:**"),
     ("has_session_links", "[["),
+    ("has_milestones", "## Major Milestones"),
+    ("has_key_decisions", "## Key Decisions"),
+    ("has_related_sessions", "## Related Sessions"),
 ]
 
 
@@ -116,29 +120,11 @@ def _create_sample_data(base: Path) -> None:
 def _generate_project_notes_to_disk(
     sessions: list[BaseSession], output_dir: Path
 ) -> list[Path]:
-    """Group sessions by project and write per-project notes to disk.
+    """Generate project notes to disk using the core pipeline.
 
     Returns list of generated project note file paths.
     """
-    projects_dir = output_dir / "projects"
-    projects_dir.mkdir(parents=True, exist_ok=True)
-
-    groups = group_sessions_by_project(sessions)
-    formatter = ProjectFormatter()
-    written: list[Path] = []
-
-    for project_name, project_sessions in groups.items():
-        # Skip pseudo-projects
-        if project_name in ("(unknown)", "(unassigned)"):
-            continue
-
-        note_content = formatter.format_project_note(project_name, project_sessions)
-        note_name = formatter.note_name(project_name)
-        note_path = projects_dir / f"{note_name}.md"
-        note_path.write_text(note_content, encoding="utf-8")
-        written.append(note_path)
-
-    return written
+    return generate_project_notes(sessions, output_dir)
 
 
 def score_project_note(note_path: Path) -> dict[str, bool]:
@@ -264,7 +250,15 @@ class ProjectNotesMeasurer(Measurer):
             )
 
         total = len(note_files)
-        value = (valid_count / total * 100) if total > 0 else 0.0
+
+        # When expected_projects is provided, use it as denominator to enforce
+        # per-project coverage: value = valid_notes / expected_projects * 100
+        if expected_projects is not None:
+            denominator = len(expected_projects)
+        else:
+            denominator = total
+
+        value = (valid_count / denominator * 100) if denominator > 0 else 0.0
 
         details: dict[str, object] = {
             "total_project_notes": total,
