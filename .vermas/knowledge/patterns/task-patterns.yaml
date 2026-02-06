@@ -1,18 +1,19 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - 'While the task''s code deliverables were lost, the workflow did produce a genuine
-    process improvement: updating the workflow YAML to shift priorities from ''build
-    measurers'' to ''validate against real data''. The improvement file (adapt-mission-42d76466-c1)
-    correctly diagnosed that 35% KPI despite 57/57 task completion indicates a validation
-    gap. This meta-level adaptation was the only durable output on main.'
+  - The narrative feature was implemented as a small module (narrative.py, 9 lines)
+    with targeted integration points (obsidian.py +7, templates.py +1, 2 parser files
+    +4 each). This modular design meant the dev agent could recover from a crash and
+    complete the work incrementally, as each file change was independent. Features
+    that touch fewer files with smaller changes are more resilient to agent session
+    failures.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - process
+  - technical
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -443,10 +444,12 @@ patterns:
   sample_count: 1
 - pattern: resilience/*
   insights:
-  - When agents complete work but fail to signal completion, the work is lost if not
-    committed. Consider implementing WIP (work-in-progress) commits before signaling
-    done, so that even if signaling fails, the implementation is preserved in git
-    history for recovery.
+  - When the dev agent's Claude Code session terminated mid-implementation, the watcher
+    agent detected the failure and correctly signaled 'blocked'. The dev agent restarted,
+    recovered context from partial on-disk changes, and completed the implementation
+    within ~5 minutes. This crash-recover pattern demonstrates that agent session
+    crashes are recoverable if partial work is persisted to disk and the watcher monitors
+    agent liveness.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -758,13 +761,13 @@ patterns:
   sample_count: 1
 - pattern: code-delivery/*
   insights:
-  - "The 'Complete task' commits (d30eed2, 67b9e77) are workflow artifact commits\
-    \ that contain only .vermas/ state files, .coverage, and .worktrees pointers \u2014\
-    \ zero source code. When dev work happens on a branch, the completion commit must\
-    \ be a merge commit that includes the branch's source changes. The automated-kpi-measurers\
-    \ task avoided this because dev committed source directly to main during QA iteration,\
-    \ so the completion commit only needed artifacts. The formatter task failed because\
-    \ source was on branch 6ea299c and the completion commit (67b9e77) was not a merge."
+  - The actual narrative implementation (+135 LOC across 6 src/test files) exists
+    only on worktree branch commit 56e61bc2, while the main branch commit a4d2b8ea
+    contains 0 src/test file changes. This is the 12th occurrence of merge-drops-source.
+    The worktree workflow creates a separate branch, the dev commits there, but the
+    'Complete task' commit on main captures only artifact files (.vermas/, insights/,
+    .worktrees/) without the source code. Direct-to-main commits bypass this failure
+    mode entirely.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -792,12 +795,11 @@ patterns:
   sample_count: 1
 - pattern: quality-assurance/*
   insights:
-  - "QA agent reviewed the branch early (signal bb8e1b75 at T+0) and correctly identified\
-    \ 'branch has no code changes vs main' before dev had implemented anything, issuing\
-    \ needs_revision. Dev then implemented the full feature and signaled done ~6 minutes\
-    \ later. This early QA catch is a positive pattern \u2014 QA should review before\
-    \ dev signals done to catch setup issues, but it also means QA ran before there\
-    \ was code to review, wasting a review cycle."
+  - The QA agent's first action was running 'git diff main..HEAD' and correctly identified
+    zero code changes, immediately signaling needs_revision. This fast-fail QA check
+    prevented a false completion signal. QA agents should always verify source code
+    changes exist before reviewing functionality, using git diff against the base
+    branch as the first gate.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -867,5 +869,21 @@ patterns:
   recommended_workflow: null
   tags:
   - environment
+  - process
+  sample_count: 1
+- pattern: monitoring/*
+  insights:
+  - 'The watcher agent issued two signals: first ''blocked'' when it detected the
+    dev session ended mid-implementation (correctly diagnosing partial changes on
+    disk but no commit), then ''progress'' when it observed the dev recovering and
+    making incremental progress. The watcher''s file-level change tracking (obsidian.py
+    +7, narrative.py +9, test_narrative.py +110) provided precise visibility into
+    implementation progress without interfering with the dev agent''s work.'
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - monitoring
   - process
   sample_count: 1

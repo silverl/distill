@@ -1,18 +1,17 @@
 agents:
   general:
     learnings:
-    - "The dev agent successfully wrote meaningful code (200 LOC across 4 files: weekly\
-      \ formatter sections, parser project-name fallback, updated tests) but failed\
-      \ at the merge-to-main step \u2014 the same failure mode seen in 11 prior cycles.\
-      \ The coding capability is not the issue; the git workflow is."
-    - "The QA agent performed correctly: it detected 'no code or test changes on this\
-      \ branch' and issued a needs_revision signal at 08:50:57. However, the signal\
-      \ was not actionable \u2014 the workflow completed anyway with artifact-only\
-      \ commit a3e2ac48, indicating the QA gate is advisory, not blocking."
-    - The watcher agent produced a 354KB trace (larger than the dev agent's 224KB
-      trace) but did not intervene to prevent the artifact-only merge. A watcher that
-      validates 'git diff HEAD~1..HEAD -- src/ tests/' before allowing completion
-      would have caught this.
+    - "Dev agent demonstrated resilience by recovering from a mid-implementation crash,\
+      \ completing 135 LOC across 6 files including 110 lines of tests, but committed\
+      \ to the worktree branch instead of main \u2014 continuing the 12-cycle pattern\
+      \ of branch code not reaching main."
+    - QA agent acted quickly and correctly, running git diff within the first 2 minutes
+      and signaling needs_revision when no source changes were found. However, QA
+      did not re-review after the dev completed work on the branch, allowing the task
+      to be marked 'done' without verifying code was on main.
+    - Watcher agent provided excellent observability with two well-timed signals (blocked
+      at crash detection, progress during recovery), giving accurate file-level change
+      tracking that could inform automated recovery decisions in future workflows.
     strengths: []
     weaknesses: []
     best_practices: []
