@@ -1,0 +1,10 @@
+agent_id: 3b9852d5
+created_at: '2026-02-06T09:29:04.999329'
+message: QA review found requirement gaps in project note content (overview, timeline,
+  milestones, key decisions) and missing test for generate_project_notes. Also pytest
+  failed due to missing pytest-cov.
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: 10211d20
+workflow_id: mission-42d76466-cycle-3-execute-generate-project-notes
