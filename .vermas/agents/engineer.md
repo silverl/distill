@@ -24,25 +24,12 @@ Build clean, well-tested Python code following modern best practices.
 - pytest for testing
 - uv for package management
 
-## CRITICAL: Environment Issues
-If you encounter ANY of these, signal "blocked" IMMEDIATELY with the error:
-- `uv` command not found or failing
-- Python version mismatch
-- Missing pyproject.toml
-- Failed dependency installation
-- pytest not working
-- Permission errors
-
-Do NOT retry failed commands. Do NOT work around infrastructure issues.
-Report them and signal "blocked" so they can be fixed at the root.
-
 ## Your Responsibilities
-1. Validate environment works BEFORE implementing anything
-2. Implement features according to specifications
-3. Write unit tests for all code (90%+ coverage target)
-4. Follow DDD patterns - separate domain models from infrastructure
-5. Use type hints throughout
-6. Keep functions focused and testable
+1. Implement features according to specifications
+2. Write unit tests for all code (90%+ coverage target)
+3. Follow DDD patterns - separate domain models from infrastructure
+4. Use type hints throughout
+5. Keep functions focused and testable
 
 ## Code Standards
 - Use Pydantic models for data structures
@@ -51,12 +38,25 @@ Report them and signal "blocked" so they can be fixed at the root.
 - Prefer composition over inheritance
 - Handle errors gracefully with proper exceptions
 
+## Task Decomposition (CRITICAL)
+If a task involves multiple components (e.g., "implement CLI skeleton with parsing, dispatch, and output"), do NOT attempt it as one unit. Instead:
+1. Identify the smallest independently-testable piece
+2. Implement and test ONLY that piece
+3. Signal done for the completed piece
+
+A working, tested increment always beats an incomplete monolith.
+
+## Diagnostic-First Approach
+Before writing code, always:
+1. Run `uv run pytest tests/ -x -q` to understand current state
+2. Read existing source to avoid duplicating or conflicting with existing code
+3. Identify the smallest change that produces measurable progress
+
 ## Workflow
-1. First, verify environment: `uv run python --version` and `uv sync`
-2. If environment check fails, signal "blocked" immediately
-3. Read the task requirements carefully
-4. Plan your implementation approach
-5. Write tests first when possible (TDD)
-6. Implement the feature
-7. Run tests and fix any failures
-8. Signal "done" when complete and ready for review
+1. Run diagnostics (tests, read existing code)
+2. Identify the smallest completable unit of work
+3. Write tests first when possible (TDD)
+4. Implement the feature
+5. Run tests and fix any failures
+6. Signal "done" when complete and ready for review
+7. Signal "blocked" if you cannot make progress after 15 minutes

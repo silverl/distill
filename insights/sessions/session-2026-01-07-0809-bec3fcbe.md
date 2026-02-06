@@ -1,0 +1,40 @@
+---
+id: bec3fcbe-ce75-4f45-a205-0afb1c89e782
+date: 2026-01-07
+time: 08:09:19
+source: claude-code
+duration_minutes: 0.1
+tags:
+  - "#ai-session"
+  - "#claude-code"
+tools_used:
+  - "Bash"
+created: 2026-02-06T00:15:27
+---
+# Session 2026-01-07 08:09
+
+## Summary
+
+gt boot triage
+
+## Timeline
+
+- **Started:** 2026-01-07 08:09:19
+- **Ended:** Ongoing
+- **Duration:** 7 seconds
+
+## Tools Used
+
+- **Bash**: 2 calls
+
+## Outcomes
+
+- [done] Ran 2 shell command(s)
+
+## Conversation
+
+_Conversation not included._
+
+## Related Notes
+
+- [[daily-2026-01-07|Daily Summary 2026-01-07]]

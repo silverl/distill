@@ -1,0 +1,24 @@
+id: adapt-mission-73116471-c3-engineer
+date: '2026-02-06T00:12:52.340325'
+type: other
+target: agent/engineer
+change: The engineer agent instructions lack any guidance on handling repeated failures
+  or decomposing complex tasks. Evidence shows 4+ consecutive zero-output cycles where
+  the engineer attempted the same monolithic task each time. Adding explicit decomposition
+  guidance and a diagnostic-first approach mirrors the only successful recovery pattern
+  observed (cycle-3-5). Also adding guidance to validate progress against functional
+  output, not just task closure, since 48 tasks were marked 'completed' with only
+  15% KPI progress.
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.08
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

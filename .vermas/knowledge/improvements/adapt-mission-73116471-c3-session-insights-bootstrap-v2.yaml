@@ -1,0 +1,24 @@
+id: adapt-mission-73116471-c3-session-insights-bootstrap-v2
+date: '2026-02-06T00:12:52.339508'
+type: workflow_change
+target: workflow/session-insights-bootstrap-v2
+change: 'The current workflow lacks: (1) a blocked state for the engineer to signal
+  infrastructure issues, causing stuck cycles; (2) any decomposition enforcement in
+  the engineering state - the evidence shows monolithic ''core feature implementation''
+  tasks fail repeatedly while decomposed tasks succeed (cycle-3-5 recovery pattern);
+  (3) a revision limit to prevent infinite revision loops that produce zero output.
+  Adding a blocked state, decomposition instructions, and a max-revision counter addresses
+  the three primary failure modes observed across 4+ failed cycles.'
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.08
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

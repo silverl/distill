@@ -1,15 +1,17 @@
 agents:
   general:
     learnings:
-    - Dev agent successfully executed recovery strategy (worktree file checkout to
-      main) rather than reimplementation, breaking a 5+ cycle failure pattern on this
-      specific task.
-    - QA agent performed rapid independent verification (~30 seconds) by running the
-      specific test file in isolation before checking full suite, demonstrating efficient
-      focused validation.
-    - "The watcher agent correctly finalized the workflow within 25 seconds of QA\
-      \ approval, showing tight coordination between the three-agent pipeline (dev\
-      \ \u2192 qa \u2192 watcher)."
+    - 'Dev agent was highly effective: delivered 894 LOC across 11 files with 35 new
+      tests (430 total passing) in under 7 minutes of active implementation, addressing
+      all three stalled core features (narrative generation, project notes, weekly
+      digests).'
+    - "QA agent performed two reviews \u2014 an early premature review (correct but\
+      \ noisy) and a thorough final review with independent test execution (uv run\
+      \ --extra dev pytest). QA caught an environment issue (pytest-cov not in base\
+      \ deps) and worked around it."
+    - Watcher agent provided accurate situational awareness, correctly interpreting
+      the early QA needs_revision as expected workflow ordering rather than a problem,
+      and summarized the final state accurately.
     strengths: []
     weaknesses: []
     best_practices: []

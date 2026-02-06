@@ -1,75 +1,64 @@
+workflow: session-insights-bootstrap-v2
+description: Development workflow for session-insights CLI tool (v2 - with decomposition and guardrails)
 agents:
 - role: engineer
 - role: reviewer
 states:
-  blocked:
-    on_entry:
-    - action: log
-      message: Workflow blocked - environment validation failed or infrastructure
-        issue
-    type: terminal
+  start:
+    type: initial
+    auto_transition: engineering
   engineering:
-    instructions: 'Implement the assigned task for the session-insights CLI tool.
+    instructions: |
+      Implement the assigned task for the session-insights CLI tool.
 
+      CRITICAL - TASK DECOMPOSITION RULE:
+      If the task description contains more than one distinct feature or component,
+      you MUST decompose it before coding. Pick the smallest independently-completable
+      subtask and implement ONLY that. Signal "done" for the subtask, not the whole feature.
+      A partial, working, tested increment is always better than an incomplete monolith.
+
+      DIAGNOSTIC-FIRST STRATEGY:
+      Before writing any code, spend 5 minutes understanding the current state:
+      1. Run `uv run pytest tests/ -x -q` to see what passes now
+      2. Read existing source files to understand what's already implemented
+      3. Identify the smallest change that moves KPIs forward
 
       Follow Python best practices:
-
       - Use Pydantic v2 for models
-
       - Click for CLI commands
-
       - pytest for testing
-
       - Type hints throughout
 
-
       Run tests before signaling done:
-
       `uv run pytest tests/ -x -q`
-
 
       If tests fail, fix them before signaling.
 
-
       Signal "done" when implementation is complete and tests pass.
-
-      Signal "blocked" if you encounter infrastructure issues.
-
-      '
+      Signal "blocked" if you encounter infrastructure issues or cannot make progress after 15 minutes.
     on_signal:
-      blocked:
-        from: engineer
-        next: blocked
       done:
         from: engineer
         next: reviewing
+      blocked:
+        from: engineer
+        next: blocked
     timeout:
-      action: nudge
       duration: 30m
-  finalize:
-    on_entry:
-    - action: commit
-    type: terminal
+      action: nudge
   reviewing:
-    instructions: 'Review the implementation for correctness and quality.
+    instructions: |
+      Review the implementation for correctness and quality.
 
-
-      Verification steps:
-
-      1. Read all changed files
-
-      2. Run full test suite with coverage
-
-      3. Test CLI manually if applicable
-
+      IMPORTANT - Validate real progress, not just task completion:
+      1. Verify that new code is functional and integrated, not just scaffolding
+      2. Run the full test suite: `uv run pytest tests/ -x -q`
+      3. Confirm tests actually exercise the new code (not just pre-existing tests passing)
       4. Check for edge cases and error handling
 
-
-      Signal "approved" if quality is acceptable.
-
-      Signal "needs_revision" with specific feedback if changes needed.
-
-      '
+      Signal "approved" if quality is acceptable AND the change delivers functional value.
+      Signal "needs_revision" with specific, actionable feedback if changes needed.
+      Keep revision feedback to 3 or fewer concrete items to avoid overwhelming the engineer.
     on_signal:
       approved:
         from: reviewer
@@ -78,29 +67,14 @@ states:
         from: reviewer
         next: engineering
     timeout:
-      action: nudge
       duration: 15m
-  start:
-    auto_transition: validate
-    type: initial
-  validate:
-    instructions: "Before implementing anything, validate the execution environment.\n\
-      \nRun these checks IN ORDER and report any failures:\n\n1. Verify Python environment:\n\
-      \   `uv run python --version`\n   Expected: Python 3.11 or higher\n\n2. Verify\
-      \ project structure exists:\n   - Check if pyproject.toml exists\n   - Check\
-      \ if src/ directory exists\n   - If pyproject.toml is missing, this project\
-      \ needs setup first\n\n3. Verify dependencies can be installed:\n   `uv sync`\n\
-      \n4. Verify pytest works:\n   `uv run pytest --version`\n\nIf ALL checks pass,\
-      \ signal \"done\".\n\nIf ANY check fails:\n- Report the specific failure in\
-      \ your signal message\n- Signal \"blocked\" with details about what failed\n"
-    on_signal:
-      blocked:
-        from: engineer
-        next: blocked
-      done:
-        from: engineer
-        next: engineering
-    timeout:
-      action: fail
-      duration: 5m
-workflow: session-insights-bootstrap-v2
+      action: nudge
+  blocked:
+    on_entry:
+    - action: log
+      message: Workflow blocked - engineer cannot make progress. Requires human review or scope reduction.
+    type: terminal
+  finalize:
+    on_entry:
+    - action: commit
+    type: terminal

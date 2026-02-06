@@ -1,0 +1,12 @@
+agent_id: c98bfdd9
+created_at: '2026-02-06T06:34:27.205861'
+message: 'QA: current changes only add BaseSession project/narrative fields + derive
+  project from cwd. No implementation of project notes/weekly digests/narrative generation;
+  BaseSession.project unused by analyzers (they read metadata[''project'']); no tests
+  added for new field. Parser tests pass only when run with PYTHONPATH=src and addopts
+  override.'
+metadata: null
+role: qa
+signal: needs_revision
+signal_id: f7b91c8a
+workflow_id: mission-ed66aa37-cycle-1-execute-address-Core-feature-implementation-is

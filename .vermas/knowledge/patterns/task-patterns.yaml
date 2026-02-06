@@ -1,19 +1,18 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - "This workflow's failure (code in worktree, not on main) is a variant of the recurring\
-    \ merge-drops-source pattern that has occurred 9 times in this project. The proven\
-    \ solution is direct-to-main commits \u2014 all 8 successful deliveries in this\
-    \ project used direct-to-main, while 0 of 9 branch merges succeeded. Working in\
-    \ worktrees or branches adds a merge step that has a 100% failure rate in this\
-    \ project's workflow."
+  - New project.py and weekly.py formatters followed the established pattern in formatters/
+    directory (alongside existing obsidian.py and templates.py). Each formatter is
+    self-contained with its own test file. The grouping functions (group_by_project,
+    group_by_week) were added to core.py as utilities. This plugin-style architecture
+    enables clean feature additions.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - process
+  - technical
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -47,13 +46,12 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - Include a reusable _assert_no_traceback(result) helper that scans both stdout
-    and stderr for Python traceback patterns. This is critical for CLI tools where
-    user-facing error messages should never expose raw Python tracebacks. Combine
-    this with subprocess-based E2E tests that capture actual process output, since
-    CliRunner unit tests may swallow tracebacks that real invocations would surface.
+  - Dev delivered 35 new tests alongside 894 LOC of implementation, growing the suite
+    from 291 to 430 tests. All tests passed including pre-existing ones, indicating
+    the new features integrated cleanly with existing code. Writing tests alongside
+    implementation (not as a separate task) consistently produces better outcomes.
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -340,12 +338,11 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - 'The dev-QA coordination was efficient: dev signaled done at 04:02, QA approved
-    at 04:05 (3 minutes review), QA completed at 04:06, watcher confirmed at 04:07.
-    Total signal chain: 5 minutes. The key enabler was dev providing detailed signal
-    metadata (test counts, categories, coverage description) so QA could quickly verify
-    requirements without extensive exploration. Detailed done-signal messages reduce
-    QA review time.'
+  - "QA agent reviewed the base commit state before dev had finished implementing,\
+    \ correctly finding no source changes and signaling needs_revision. The watcher\
+    \ correctly identified this as normal (dev still working). However, this early\
+    \ needs_revision signal is noise \u2014 the workflow should gate QA review on\
+    \ dev's done signal rather than allowing QA to review intermediate states."
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -690,14 +687,14 @@ patterns:
   sample_count: 1
 - pattern: deployment/*
   insights:
-  - Main commit 81bd567 has 0 src/test changes despite task branch 7ba531c having
-    +375 LOC (179 in obsidian.py, 225 in tests). The merge process creates a commit
-    with .vermas/ artifacts but fails to include actual source changes. This is the
-    6th documented occurrence (cycles 3, 16, C8, M2e-C3, and now this). The pattern
-    persists because the fix (act-71835fc6) has never been executed despite being
-    a pending action item for multiple cycles.
+  - This is the 10th occurrence of a workflow where dev agents successfully implement
+    and commit code to a task branch, QA approves it, but the merge/promotion to main
+    only captures workflow artifacts (.vermas/, .worktrees/, insights/) while dropping
+    all src/ and tests/ changes. The DSL workflow's merge step is fundamentally broken.
+    Direct-to-main commits have a 100% success rate (8/8) while branch merges have
+    a 0% success rate (0/10).
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
