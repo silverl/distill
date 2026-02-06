@@ -1,18 +1,18 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - The meeting identified that code completed in worktrees is lost when orchestration
-    fails because agents don't commit before signaling completion. An action item
-    was created to consider WIP commits before signaling as a workflow step. This
-    addresses the recurring 'uncommitted-completion' failure mode where work is done
-    but never persisted.
+  - Instead of each parser directly assigning narrative = summary (duplicated logic
+    in claude.py and codex.py), route all parsers through a single enrich_narrative()
+    function. This centralizes quality filtering, fallback chains, and resynthesis
+    logic in one place, reducing code duplication from 13 lines across 2 files to
+    2 lines calling the shared function.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - process
+  - technical
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -46,11 +46,11 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - Adding tests for three modules with 0% coverage yielded a 6-percentage-point coverage
-    jump (88% to 94%) with only 36 tests. Targeting completely uncovered modules provides
-    the highest ROI for coverage improvement tasks. The dev agent correctly prioritized
-    these over adding marginal tests to already-covered code, following the task specification
-    to avoid trivial tests.
+  - 'Structure tests as separate classes for each validation layer: TestNeedsResynthesis
+    for the gate, TestXmlDetection for tag detection, TestShortTextDetection for length
+    checks, TestNarrativeResynthesis for regeneration. This isolates failures to specific
+    layers and makes it clear which validation step broke. The workflow added 24 tests
+    organized across 5 classes, achieving comprehensive coverage of all edge cases.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -470,12 +470,12 @@ patterns:
   sample_count: 1
 - pattern: process/*
   insights:
-  - Two Cycle 3 adaptations (engineer agent guidance and workflow changes) were rolled
-    back after success rate dropped from 55% to 0%. The adaptations added detailed
-    prescriptive instructions about automated measurers, project detection edge cases,
-    CLI decomposition, and measurer-validation gates. The Cycle 2 adaptation with
-    broader guidance (measurement-first, task decomposition) succeeded. This suggests
-    adaptations should be directional rather than prescriptive.
+  - 'QA agent reviewed existing code within 25 seconds and issued a needs_revision
+    signal identifying exactly what was wrong: raw passthrough without filtering,
+    no XML detection, tests not updated. This early, specific feedback gave the dev
+    agent a clear implementation checklist. The entire fix was completed in under
+    7 minutes after QA''s signal, demonstrating that precise QA feedback accelerates
+    dev work.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -722,18 +722,18 @@ patterns:
   sample_count: 1
 - pattern: implementation/*
   insights:
-  - The task specification explicitly defined a measurable acceptance criterion (70%+
-    accuracy across 50+ samples) and a structured output format. The dev agent exceeded
-    the target (80% across 60 samples) and delivered both the core feature and its
-    measurement in a single pass. KPI-anchored task specs eliminate ambiguity about
-    'done' and enable objective QA validation.
+  - 'When generating narratives from incomplete data, use a fallback chain: first
+    try cleaned summary, then task_description, then synthesize from structured metadata
+    (tool names with counts, session duration, tags), and finally fall back to project
+    name. Each level produces progressively less specific but still useful content,
+    ensuring no narrative is ever empty or contains raw artifacts.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - implementation
-  - process
+  - technical
   sample_count: 1
 - pattern: refactoring/*
   insights:
@@ -800,13 +800,11 @@ patterns:
   sample_count: 1
 - pattern: code-quality/*
   insights:
-  - 'The formatter implementation demonstrates a reusable pattern for extracting structured
-    sections (user questions, tool usage analysis, key decisions, accomplishments)
-    from unstructured conversation turns. Key technique: use role-based filtering,
-    keyword/marker-based decision extraction (''decided to'', ''chose to'', ''going
-    to''), and tool_call metadata for context enrichment. Each extraction method is
-    a separate private method with truncation guards (200 chars for questions, 150
-    for decisions, 60 for tool args).'
+  - Implement a dedicated quality gate function (needs_resynthesis) that checks content
+    against multiple criteria (XML tag detection, minimum word count) before accepting
+    it. When content fails the gate, regenerate from structured metadata rather than
+    attempting to patch bad input. This separates validation logic from generation
+    logic cleanly.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null

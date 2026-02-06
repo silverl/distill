@@ -1,15 +1,16 @@
 agents:
   general:
     learnings:
-    - Dev agent responded efficiently to QA feedback, addressing all three uncovered
-      modules in a single implementation pass rather than incrementally fixing one
-      at a time, which minimized round-trips.
-    - QA agent provided precise, quantitative feedback (88% coverage, named the 3
-      zero-coverage modules, specified the correct command with --extra dev flag),
-      which eliminated ambiguity and enabled rapid dev response.
-    - "The watcher agent's role in this workflow was minimal \u2014 the dev-QA coordination\
-      \ was tight enough that external monitoring added little value for a focused\
-      \ testing task."
+    - Dev agent completed the full implementation (+262/-18 LOC across 4 files with
+      26 new tests) in approximately 6 minutes after receiving QA feedback, demonstrating
+      efficient focused execution when given clear requirements.
+    - QA agent identified the root cause (raw prompt passthrough without filtering)
+      within 25 seconds of starting review, enabling the needs_revision signal before
+      dev had begun implementation. Early QA involvement prevented wasted effort on
+      wrong approaches.
+    - Watcher agent provided a single progress update confirming all agents were registered
+      and working, then stayed out of the way. Minimal watcher overhead is appropriate
+      for short-duration workflows.
     strengths: []
     weaknesses: []
     best_practices: []
