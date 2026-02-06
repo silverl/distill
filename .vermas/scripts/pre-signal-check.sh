@@ -12,6 +12,10 @@
 # Cycle 12 addition: Detects artifact-only commits (no src/ changes).
 # This prevents marking tasks "done" when only workflow artifacts were committed.
 #
+# Cycle 6 addition: Checks for dirty worktrees containing uncommitted code.
+# This prevents the "uncommitted-completion" failure mode from M2e-C5 where
+# work was done in a worktree but never committed before signaling done.
+#
 # Usage: .vermas/scripts/pre-signal-check.sh [deliverable1] [deliverable2] ...
 # Exit codes:
 #   0 = Ready to signal done
@@ -55,9 +59,9 @@ if [ $DELIVERABLE_COUNT -eq 0 ] && [ "$ALLOW_NO_DELIVERABLES" = false ]; then
 fi
 
 if [ $DELIVERABLE_COUNT -gt 0 ]; then
-    TOTAL_STEPS=4
+    TOTAL_STEPS=5
 else
-    TOTAL_STEPS=2
+    TOTAL_STEPS=3
 fi
 
 echo "=== Pre-Signal Verification ==="
@@ -88,9 +92,41 @@ fi
 echo "Git status: CLEAN"
 echo ""
 
-# 3. Verify deliverables are tracked (if provided)
+# 3. Check for dirty worktrees with uncommitted code
+echo "[3/$TOTAL_STEPS] Checking worktrees for uncommitted code..."
+WORKTREE_DIR=".worktrees"
+DIRTY_WORKTREES=0
+if [ -d "$WORKTREE_DIR" ]; then
+    for wt in "$WORKTREE_DIR"/*/; do
+        [ -d "$wt" ] || continue
+        wt_name=$(basename "$wt")
+        # Check if the worktree has uncommitted changes to src/ or tests/
+        wt_status=$(cd "$wt" && git status --porcelain -- src/ tests/ 2>/dev/null || true)
+        if [ -n "$wt_status" ]; then
+            echo ""
+            echo "WARNING: Worktree '$wt_name' has uncommitted src/tests changes:"
+            (cd "$wt" && git status --short -- src/ tests/ 2>/dev/null) | while read line; do
+                echo "  $line"
+            done
+            DIRTY_WORKTREES=$((DIRTY_WORKTREES + 1))
+        fi
+    done
+fi
+if [ $DIRTY_WORKTREES -gt 0 ]; then
+    echo ""
+    echo "FAIL: $DIRTY_WORKTREES worktree(s) have uncommitted code changes."
+    echo ""
+    echo "This may indicate work that was completed in a worktree but never"
+    echo "committed. Either commit/recover the worktree code or clean it up"
+    echo "before signaling done."
+    exit 1
+fi
+echo "Worktrees: CLEAN (no uncommitted src/tests changes)"
+echo ""
+
+# 4. Verify deliverables are tracked (if provided)
 if [ $DELIVERABLE_COUNT -gt 0 ]; then
-    echo "[3/$TOTAL_STEPS] Verifying deliverables are tracked in git..."
+    echo "[4/$TOTAL_STEPS] Verifying deliverables are tracked in git..."
     for file in "${DELIVERABLES[@]}"; do
         if ! git ls-files --error-unmatch "$file" >/dev/null 2>&1; then
             echo ""
@@ -106,11 +142,11 @@ if [ $DELIVERABLE_COUNT -gt 0 ]; then
     echo ""
 fi
 
-# 4. Check for artifact-only commits (if deliverables provided)
+# 5. Check for artifact-only commits (if deliverables provided)
 # This catches the pattern from Cycle 12 where tasks were marked "done"
 # but only workflow artifacts (.vermas/*) were committed, not actual code.
 if [ $DELIVERABLE_COUNT -gt 0 ] && [ "$ALLOW_ARTIFACT_ONLY" = false ]; then
-    echo "[4/$TOTAL_STEPS] Checking for source code changes..."
+    echo "[5/$TOTAL_STEPS] Checking for source code changes..."
 
     # Check if the LATEST commit has any changes to src/ or tests/
     # Previously compared main..HEAD which allowed artifact-only commits
