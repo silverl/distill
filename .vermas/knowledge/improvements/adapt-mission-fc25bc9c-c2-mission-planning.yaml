@@ -1,0 +1,26 @@
+id: adapt-mission-fc25bc9c-c2-mission-planning
+date: '2026-02-06T12:08:24.151432'
+type: prompt_change
+target: prompt/mission-planning
+change: "The core problem is structural: 7+ cycles at 30-45% KPI progress with 80%\
+  \ task completion rate means task selection is fundamentally misaligned with KPI\
+  \ impact. The planning prompt must enforce three changes backed by strong evidence:\
+  \ (1) one-KPI-per-task isolation (bundling caused attribution failures in cycle\
+  \ 2), (2) mandatory root-cause analysis before retrying any failed task (skipping\
+  \ RCA in cycle 2 led to repeated failures per cycle-2-8), and (3) task prioritization\
+  \ by expected KPI delta rather than feasibility. Additionally, the narrative_quality_scorer\
+  \ has been identified as the single highest-leverage blocker across multiple cycles\
+  \ \u2014 it must be explicitly prioritized."
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.45
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null

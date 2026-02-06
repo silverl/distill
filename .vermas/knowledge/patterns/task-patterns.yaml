@@ -1,18 +1,19 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - Claude Code encodes project paths by replacing / with - (e.g., -Users-nikpatel-Documents-GitHub-vermas).
-    Decoding requires a heuristic using known parent directory names (_KNOWN_PARENT_DIRS)
-    to determine where the project name begins. The dev's approach of walking segments
-    right-to-left until hitting a known parent is robust and handles hyphenated project
-    names correctly. This pattern is reusable for any path-encoding scheme.
+  - "The improvement YAML captured that bundling multiple KPIs (weekly digests + test\
+    \ coverage) into a single task caused attribution failures \u2014 when the task\
+    \ partially succeeds, it's unclear which KPI was addressed. The recommendation\
+    \ to isolate one KPI per task, combined with mandatory root-cause analysis before\
+    \ retrying failed tasks, was captured as a prompt-level improvement with measured\
+    \ 45% prior success rate."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - technical
+  - process
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -47,18 +48,18 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - QA agent sent needs_revision signal when it found 'git log main..HEAD empty' in
-    the worktree, correctly identifying that no implementation had been committed
-    yet. This early detection is valuable but the workflow still ultimately claimed
-    success despite the empty main delivery. The QA check should be extended to verify
-    that code reaches main, not just that it exists on the branch.
+  - Despite the watcher agent running in a mismatched context (cycle 1 planning meeting),
+    its 159-line trace provided valuable forensic data for understanding what actually
+    happened during the workflow. The watcher's trace showed it was exploring the
+    codebase and measuring KPIs from a prior cycle, confirming the session reuse issue.
+    Preserving agent traces even for failed workflows is essential for debugging.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - process
+  - technical
   sample_count: 1
 - pattern: code-recovery/*
   insights:
@@ -136,11 +137,11 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - QA agent correctly flagged the final-kpi-verification task as needs_revision because
-    KPI_FINAL.md was never created despite being a stated deliverable. This QA gate
-    prevented a false 'done' signal from propagating. The pattern shows that having
-    a separate QA agent with clear deliverable expectations catches omissions that
-    the dev agent misses when self-certifying completion.
+  - "The main completion commit (fe356532) contains only trace logs, knowledge YAML\
+    \ updates, and worktree pointer changes \u2014 zero lines in src/ or tests/. This\
+    \ is the 12th occurrence of this pattern in the project. A pre-merge gate checking\
+    \ `git diff --stat -- src/ tests/` would catch this every time. The branch commit\
+    \ (4f381c80) similarly contained only generated insight markdown, not source code."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -367,12 +368,12 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - "The dev agent trace shows it spent most of its time investigating a completely\
-    \ different failed mission (b630c874 claude-parser) via a debug meeting, rather\
-    \ than working on the assigned fix-project-names-edge-cases task. The dev session\
-    \ was reused/inherited from a prior meeting context. This suggests agent session\
-    \ isolation is insufficient \u2014 each workflow task should get a clean agent\
-    \ context without prior meeting state leaking in."
+  - The QA agent correctly identified empty delivery with a needs_revision signal,
+    but the workflow orchestrator still classified the outcome as 'success'. This
+    indicates the success/failure classification is based on workflow completion (all
+    agents finished) rather than deliverable verification (code on main with src changes).
+    Workflow orchestrators must gate success classification on QA approval, not just
+    completion.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -677,11 +678,11 @@ patterns:
   sample_count: 1
 - pattern: workflow-design/*
   insights:
-  - "This workflow completed with 'success' status in 362 seconds, but the actual\
-    \ outcome was a failed delivery \u2014 an artifact-only commit with zero source\
-    \ code changes. Workflow orchestration should distinguish between process completion\
-    \ (all steps ran) and value delivery (deliverables contain real changes). A post-merge\
-    \ source diff check is essential."
+  - The workflow was recorded as 'success' with 314s duration, but QA signaled needs_revision
+    because the primary deliverable was missing. This indicates the workflow completion
+    signal was based on the dev agent finishing execution rather than QA approval.
+    Workflow success should require QA approval signal, not just dev completion, to
+    prevent false-positive success reporting.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -788,11 +789,11 @@ patterns:
   sample_count: 1
 - pattern: quality-assurance/*
   insights:
-  - The QA agent's first action was running 'git diff main..HEAD' and correctly identified
-    zero code changes, immediately signaling needs_revision. This fast-fail QA check
-    prevented a false completion signal. QA agents should always verify source code
-    changes exist before reviewing functionality, using git diff against the base
-    branch as the first gate.
+  - The QA agent correctly identified that KPI_BASELINE.md was missing and that the
+    branch had no meaningful diffs vs main for the required deliverable. This demonstrates
+    the value of QA agents performing explicit deliverable-existence checks rather
+    than just reviewing what was committed. The QA signal 'branch has no diffs vs
+    main and KPI_BASELINE.md is missing' was precise and actionable.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -910,4 +911,51 @@ patterns:
   tags:
   - agent-coordination
   - process
+  sample_count: 1
+- pattern: task-execution/*
+  insights:
+  - "The dev agent committed 43 files with 1,584 insertions but none of them were\
+    \ the requested deliverable (KPI_BASELINE.md). High output volume (generated insight\
+    \ files from running the pipeline) created the appearance of completion while\
+    \ the actual task requirement \u2014 recording specific KPI measurements in a\
+    \ structured file \u2014 was entirely missed. Agents should verify deliverable\
+    \ existence before signaling done."
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - task-execution
+  - process
+  sample_count: 1
+- pattern: requirements/*
+  insights:
+  - "The task required two distinct steps: (1) running the analyze pipeline and (2)\
+    \ recording measurements in KPI_BASELINE.md. The dev agent completed step 1 (evidenced\
+    \ by 40+ generated files) but skipped step 2 entirely. When tasks involve both\
+    \ running a tool AND recording its output, the recording step must be treated\
+    \ as a separate, explicit checklist item \u2014 not assumed to happen automatically."
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - requirements
+  - process
+  sample_count: 1
+- pattern: commit-hygiene/*
+  insights:
+  - The commit included 43 files of generated pipeline output (session insights, project
+    notes, index updates) which made the commit appear substantial. However, these
+    were side-effects of running the pipeline, not the requested deliverable. Committing
+    large volumes of generated output alongside task work makes it harder to verify
+    that specific deliverables are present. Pre-commit checks should verify named
+    deliverables exist before allowing the commit.
+  revision_rate: null
+  success_rate: 1.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - commit-hygiene
+  - technical
   sample_count: 1

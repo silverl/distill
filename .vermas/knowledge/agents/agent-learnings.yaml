@@ -1,16 +1,16 @@
 agents:
   general:
     learnings:
-    - The dev agent's session was contaminated with a prior debug meeting about mission-b630c874,
-      causing it to investigate an unrelated failure instead of focusing on the assigned
-      fix-project-names-edge-cases task. Despite this, code was ultimately produced
-      on the branch.
-    - "QA agent (Codex-based) correctly identified the empty delivery with a needs_revision\
-      \ signal, but the workflow still concluded as 'success' \u2014 indicating the\
-      \ success classification may be based on workflow completion rather than code-on-main\
-      \ verification."
-    - The watcher agent produced 159 lines of trace but the workflow lacked a gate
-      to verify source code reached main before marking success.
+    - The dev agent successfully executed the analyze pipeline (generating 40+ files)
+      but failed to extract and record the specific KPI measurements requested in
+      the task definition, suggesting it focused on running commands rather than reading
+      and acting on all task requirements.
+    - The QA agent performed well by checking for the specific deliverable (KPI_BASELINE.md)
+      and providing a clear, actionable rejection message rather than rubber-stamping
+      the large commit.
+    - "The watcher agent generated 159 events (more than dev's 136) indicating active\
+      \ monitoring, but did not catch the missing deliverable before QA review \u2014\
+      \ suggesting watchers monitor execution health rather than deliverable completeness."
     strengths: []
     weaknesses: []
     best_practices: []

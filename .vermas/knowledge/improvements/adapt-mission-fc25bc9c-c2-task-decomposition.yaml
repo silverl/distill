@@ -1,0 +1,22 @@
+id: adapt-mission-fc25bc9c-c2-task-decomposition
+date: '2026-02-06T12:08:24.152100'
+type: prompt_change
+target: prompt/task-decomposition
+change: CLI implementation was identified as a high-risk area (cycle-4-6) and the
+  CLI skeleton task has blocked all progress for 5+ cycles (cycle-5-4). The evidence
+  shows that complex tasks need to be decomposed into smaller, independently completable
+  units. This prompt provides guardrails for task decomposition, especially for CLI-related
+  work which has a documented history of blocking entire missions.
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.45
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null
