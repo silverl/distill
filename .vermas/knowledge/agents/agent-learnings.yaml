@@ -1,16 +1,15 @@
 agents:
   general:
     learnings:
-    - "The dev agent successfully delivered real code in 2/7 tasks (wire-weekly +44\
-      \ LOC, KPI test suite +257 LOC) but produced artifact-only commits for 3 fix\
-      \ tasks and the final verification \u2014 a 29% real-code delivery rate."
-    - The QA agent performed its gating role effectively by flagging the missing KPI_FINAL.md
-      deliverable, but did not catch the 3 earlier artifact-only fix commits that
-      had zero source changes.
-    - "The watcher agent's role was invisible in the commit trail \u2014 no evidence\
-      \ of workflow-level intervention when parallel tasks all produced artifact-only\
-      \ commits, suggesting the watcher either lacked enforcement capability or did\
-      \ not detect the pattern."
+    - The dev agent produced substantive code (~256 LOC across 5 files including a
+      new narrative_quality.py measurer) but failed to commit any of it to the branch,
+      repeating the 'uncommitted-completion' pattern seen in M2e-C5.
+    - The QA agent for the related final-kpi-verification task correctly identified
+      missing deliverables (KPI_FINAL.md) and signaled needs_revision, showing QA
+      gates are functioning even when dev execution fails.
+    - "The worktree branch HEAD matches main's HEAD (23490885 'Planning workflow artifacts'),\
+      \ confirming zero commits were made by the dev agent on its task branch \u2014\
+      \ only planning artifacts exist."
     strengths: []
     weaknesses: []
     best_practices: []

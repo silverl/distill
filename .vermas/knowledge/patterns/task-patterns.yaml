@@ -16,18 +16,19 @@ patterns:
   sample_count: 1
 - pattern: git-workflow/*
   insights:
-  - The workflow produced 716 LOC on branch task/negative-path-cli-tests-mission-73116471-*
-    but the code remains unmerged to main (only branch diff shows the file). This
-    is the 10th occurrence of the merge-drops-source / branch-not-merged pattern.
-    The direct-to-main commit mandate exists precisely to prevent this, but worktree-based
-    workflows still create branches instead of committing directly to main.
+  - "Code written in git worktrees that is never committed exists only as working\
+    \ directory changes. When the workflow fails, the code is stranded \u2014 not\
+    \ on main, not on a branch, just in the worktree's working directory. Recovery\
+    \ requires manual intervention (selective file checkout or copy from worktree\
+    \ path). This project has accumulated ~5,000+ LOC of stranded code across worktrees\
+    \ and branches from 12+ such failures."
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - git-workflow
-  - process
+  - technical
   sample_count: 1
 - pattern: verification/*
   insights:
@@ -613,13 +614,14 @@ patterns:
   sample_count: 1
 - pattern: task-design/*
   insights:
-  - When a task specifies 'implement X' but X already exists (different framework/approach),
-    the dev agent successfully pivoted from 'create with Click' to 'fix existing Typer
-    entry point'. This preserved working code and avoided introducing regressions.
-    Tasks should include a discovery step to check existing state before prescribing
-    implementation details.
+  - 'The task definition was clear and well-scoped: build an automated narrative quality
+    scorer with specific rejection criteria (XML tags, short summaries, literal commands,
+    file paths), fix narrative generation, and add tests targeting 80% quality. The
+    dev agent made meaningful progress (199 LOC scorer + 57 LOC narrative fixes) but
+    failed to complete the commit-test-signal cycle. Well-defined tasks still fail
+    when execution infrastructure (worktree commits, workflow timeouts) is unreliable.'
   revision_rate: null
-  success_rate: 1.0
+  success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
@@ -870,5 +872,36 @@ patterns:
   recommended_workflow: null
   tags:
   - monitoring
+  - process
+  sample_count: 1
+- pattern: workflow-execution/*
+  insights:
+  - A 213-second (3.5 minute) workflow duration for a task requiring code implementation,
+    testing, and QA review is insufficient. The dev agent likely ran out of time or
+    encountered an error before completing the commit cycle. Successful implementation
+    tasks in this project typically require 10-30 minutes. Workflow orchestrators
+    should set minimum duration thresholds based on task complexity.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - workflow-execution
+  - process
+  sample_count: 1
+- pattern: agent-coordination/*
+  insights:
+  - Agents must commit code to the branch before signaling 'done' or before the workflow
+    state machine transitions. A pre-signal verification check (pre-signal-check.sh)
+    exists in this project but the agent either didn't run it or the workflow failed
+    before reaching that stage. Enforcing commit-before-signal at the infrastructure
+    level (not just agent-level) would prevent code loss from both timeout and crash
+    scenarios.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - agent-coordination
   - process
   sample_count: 1
