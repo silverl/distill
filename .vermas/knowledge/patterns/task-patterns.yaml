@@ -17,12 +17,11 @@ patterns:
   sample_count: 1
 - pattern: git-workflow/*
   insights:
-  - 'This is the 1st ''uncommitted-completion'' failure added to 9 prior ''merge-drops-source''
-    failures, totaling 10 code-loss incidents. The project has proven that direct-to-main
-    commits succeed 6/6 times while branch/worktree workflows fail 10/10 times. Worktrees
-    add an additional failure mode: code may never be committed at all, not just lost
-    during merge. The pre-signal-check.sh script should be enhanced to detect uncommitted
-    worktree changes.'
+  - The workflow produced 716 LOC on branch task/negative-path-cli-tests-mission-73116471-*
+    but the code remains unmerged to main (only branch diff shows the file). This
+    is the 10th occurrence of the merge-drops-source / branch-not-merged pattern.
+    The direct-to-main commit mandate exists precisely to prevent this, but worktree-based
+    workflows still create branches instead of committing directly to main.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -48,19 +47,19 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - The task specification listed 5 specific categories of negative-path tests (malformed
-    input, missing dirs, permission errors, empty files, edge cases) but the implementation
-    missed several required scenarios from each category. When a task specification
-    enumerates specific test categories, create a checklist mapping each specified
-    scenario to a test function before starting implementation, and verify completeness
-    before signaling done.
+  - Organizing negative-path tests into 6 clear categories (malformed input, missing
+    resources, permission errors, empty files, edge cases, flag behavior) with specific
+    subcategories produced comprehensive coverage of 39 tests. Each test verified
+    both the correct exit code and absence of Python tracebacks, ensuring the CLI
+    handles all failure modes gracefully. This categorization approach is reusable
+    for any CLI tool's negative-path testing.
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - process
+  - technical
   sample_count: 1
 - pattern: code-recovery/*
   insights:
@@ -271,10 +270,12 @@ patterns:
   sample_count: 1
 - pattern: workflow-lifecycle/*
   insights:
-  - At 4666 seconds (77+ minutes), all three agents (watcher, dev, qa) died simultaneously,
-    indicating tmux session termination rather than individual agent failures. Workflows
-    exceeding 30 minutes should implement session keepalive mechanisms or checkpoint-based
-    recovery to survive infrastructure interruptions.
+  - "When agents complete their work and signal done/approved/complete but their tmux\
+    \ sessions terminate before the state machine can cleanly transition, the workflow\
+    \ is marked as 'failure' with 'agents died' even though all deliverables were\
+    \ produced. The state machine should check signal state before declaring failure\
+    \ on agent death \u2014 if all required signals (done, approved, complete) are\
+    \ present, the workflow succeeded regardless of agent process state."
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -340,12 +341,12 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - 'The workflow failed because ''agents died'' after QA signaled ''needs_revision''.
-    The dev agent did not survive long enough to receive, acknowledge, and act on
-    the QA feedback. In a dev-QA revision loop, the dev agent must remain alive and
-    responsive (via heartbeats) throughout the full review cycle, not just until its
-    first ''done'' signal. The error ''DSL workflow failed: agents died'' indicates
-    the tmux session ended prematurely.'
+  - 'The dev-QA coordination was efficient: dev signaled done at 04:02, QA approved
+    at 04:05 (3 minutes review), QA completed at 04:06, watcher confirmed at 04:07.
+    Total signal chain: 5 minutes. The key enabler was dev providing detailed signal
+    metadata (test counts, categories, coverage description) so QA could quickly verify
+    requirements without extensive exploration. Detailed done-signal messages reduce
+    QA review time.'
   revision_rate: null
   success_rate: 0.0
   avg_duration: null
@@ -816,4 +817,50 @@ patterns:
   tags:
   - code-quality
   - technical
+  sample_count: 1
+- pattern: workflow-orchestration/*
+  insights:
+  - Despite the established direct-to-main mandate (8/8 success rate vs 0/9 for branch
+    merges), the worktree-based workflow inherently creates a branch for the dev agent
+    to commit to. The workflow infrastructure itself creates the conditions for the
+    merge-drops-source failure mode. Workflow DSL needs to either commit directly
+    to main or include an explicit merge-to-main step before signaling complete.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - workflow-orchestration
+  - process
+  sample_count: 1
+- pattern: delivery/*
+  insights:
+  - "When agents work in git worktrees, their commits land on task branches rather\
+    \ than main. This is the 'uncommitted-completion' failure mode \u2014 the work\
+    \ exists but not where it needs to be. The dev agent committed 716 LOC of tests\
+    \ to the worktree branch (c68657b) which required a separate recovery commit (636affe)\
+    \ to get onto main. Agents working in worktrees must be explicitly instructed\
+    \ to commit directly to main or the workflow should include a merge-to-main step."
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - delivery
+  - process
+  sample_count: 1
+- pattern: environment/*
+  insights:
+  - QA agent's initial pytest run failed because dev dependencies weren't installed
+    in QA's environment. The QA agent had to install deps before running tests. Workflows
+    should ensure all agents share the same virtual environment or include environment
+    setup as a prerequisite step, especially when QA needs to run the same test suite
+    the dev agent created.
+  revision_rate: null
+  success_rate: 0.0
+  avg_duration: null
+  recommended_workflow: null
+  tags:
+  - environment
+  - process
   sample_count: 1

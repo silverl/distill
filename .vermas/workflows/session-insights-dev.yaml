@@ -14,11 +14,27 @@ states:
     instructions: |
       Implement the assigned task for the session-insights CLI tool.
 
-      TASK ALIGNMENT CHECK (do this FIRST, before writing any code):
+      FAILURE GATE (do this FIRST, before writing any code):
+      Check whether this exact task has failed in a previous cycle. If it has:
+      1. Read the failure logs from the previous attempt.
+      2. Identify the SPECIFIC root cause (not just "test failed").
+      3. Write a 2-3 sentence diagnosis explaining what went wrong.
+      4. Only proceed if you have a DIFFERENT approach than what was tried before.
+      5. If you cannot identify a different approach, signal "blocked" with your
+         diagnosis so the mission can escalate rather than waste another cycle.
+
+      KNOWN BLOCKER — negative-path-cli-tests:
+      This task has failed across 5+ cycles. Before attempting it:
+      - Verify the CLI entry point exists and is importable
+      - Verify Click test runner (CliRunner) works with a trivial command first
+      - Check that all test fixtures and dependencies are available
+      - If ANY of these preconditions fail, signal "blocked" with specifics
+      Do NOT just re-run the same tests and hope they pass.
+
+      TASK ALIGNMENT CHECK:
       Identify which KPI(s) this task will move. If you cannot name at least one
       of the KPIs below that this task directly advances, STOP and signal blocked
-      with an explanation. Do not execute tasks that only improve infrastructure
-      without moving a metric.
+      with an explanation.
 
       KPIs (updated after cycle 4 — 68% overall):
       - note_content_richness: 0% — CRITICAL, #1 priority
@@ -26,27 +42,14 @@ states:
       - cli_runs_clean: 85% — needs negative-path tests
       - obsidian_compatibility: on track
 
-      MANDATORY PRIORITY: note_content_richness
-      This KPI has had ZERO movement across all cycles. The PARSER layer is
-      COMPLETE AND STABLE (confirmed cycle 3-6). Do NOT modify parsers.
-      The gap is in the FORMATTER/RENDERER layer: parsed data exists but is not
-      being translated into rich note output. Specifically wire these fields:
-      - Timestamps (formatted correctly)
-      - Durations (calculated from start/end)
-      - Agent interactions (with sufficient detail)
-      - Task metadata (status, outcomes)
+      MANDATORY PRIORITY: note_content_richness is at 0%. If your current task
+      does not address this KPI and there are available tasks that do, request
+      a task swap by signaling blocked with the reason "higher-priority KPI task
+      available."
 
-      For vermas_task_visibility tasks:
-      Older VerMAS session formats in .vermas/state/ may have structural
-      differences (metadata fields, naming conventions) not yet handled.
-      Investigate legacy format structure before assuming parser bugs.
-
-      For cli_runs_clean tasks:
-      Happy path is solid. Focus on NEGATIVE-PATH testing:
-      - Malformed inputs
-      - Missing directories
-      - Permission errors
-      - Unexpected file formats
+      ESCALATION RULE: If you attempt a task and it fails, do NOT retry it in
+      the same cycle. Signal "blocked" with a root cause analysis. The system
+      will escalate after 3 cumulative failures of the same task across cycles.
 
       Follow Python best practices:
       - Use Pydantic v2 for models
@@ -57,11 +60,12 @@ states:
       Run tests before signaling done:
       `uv run pytest tests/ -x -q`
 
-      If tests fail, fix them before signaling.
+      If tests fail, fix them before signaling. If you cannot fix them after
+      two attempts, signal "blocked" with the error output.
 
       Signal "done" when implementation is complete and tests pass.
-      Signal "blocked" if you encounter infrastructure issues or cannot
-      identify which KPI this task advances.
+      Signal "blocked" if you encounter infrastructure issues or cannot make
+      progress (see failure gate above).
     on_signal:
       done:
         from: engineer
@@ -75,26 +79,22 @@ states:
 
   reviewing:
     instructions: |
-      Review the implementation for correctness and quality.
+      Review the engineer's implementation for the session-insights CLI tool.
 
-      Verification steps:
-      1. Read all changed files
-      2. Run full test suite with coverage
-      3. Test CLI manually if applicable
-      4. Check for edge cases and error handling
+      REVIEW FOCUS AREAS:
+      1. Does the code actually work? Run `uv run pytest tests/ -x -q`
+      2. Are there type errors? Run `uv run mypy` on changed files
+      3. Does it advance the claimed KPI? Verify the connection is real.
+      4. For CLI-related changes: test both happy path AND error paths manually
 
-      CRITICAL REVIEW CHECKS:
-      - If the task targets note_content_richness: verify that the formatter
-        actually renders the claimed fields (timestamps, durations, agent
-        interactions, task metadata) into the output. Do not approve if
-        parsed data is available but not surfaced in rendered notes.
-      - If the task targets cli_runs_clean: verify negative-path tests exist
-        (malformed input, missing dirs, permission errors).
-      - Verify no parser modifications were made unless explicitly required
-        by the task — the parser layer is stable and should not be touched.
+      QUALITY GATE:
+      - Tests must pass
+      - No type errors
+      - Code follows existing patterns in the codebase
+      - New tests cover the added functionality
 
-      Signal "approved" if quality is acceptable.
-      Signal "needs_revision" with specific feedback if changes needed.
+      If changes need revision, signal "needs_revision" with specific feedback.
+      If changes look good and tests pass, signal "approved".
     on_signal:
       approved:
         from: reviewer
@@ -103,16 +103,20 @@ states:
         from: reviewer
         next: engineering
     timeout:
-      duration: 20m
+      duration: 15m
       action: nudge
 
   finalize:
-    type: terminal
     on_entry:
       - action: commit
+    type: terminal
 
   blocked:
-    type: terminal
     on_entry:
       - action: log
-        message: Workflow blocked - task does not advance any KPI or infrastructure issue encountered
+        message: >
+          Workflow blocked. Check agent diagnosis for root cause.
+          If this task has failed 3+ times across cycles, escalate to human review.
+          Consider closing the mission at current completion % if remaining tasks
+          are non-critical.
+    type: terminal

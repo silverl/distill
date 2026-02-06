@@ -1,17 +1,15 @@
 agents:
   general:
     learnings:
-    - "Dev agent was productive (770+ LOC written) but failed at the delivery step\
-      \ \u2014 the work was done in a worktree and never committed to main, making\
-      \ it invisible to QA and the git history. Capability is not the bottleneck;\
-      \ commit discipline is."
-    - QA agent performed thorough requirements-based review, correctly identifying
-      6+ missing test scenarios and the environment-dependent Path.home() issue. The
-      QA signal was well-structured with specific file references and actionable feedback.
-    - "The dev agent likely signaled 'done' without running the pre-signal-check.sh\
-      \ script, or the script failed to detect the uncommitted worktree state \u2014\
-      \ either way, the workflow's safety net did not catch the problem before QA\
-      \ had to reject."
+    - "Dev agent was highly productive \u2014 created 716 LOC (39 tests across 6 categories)\
+      \ and committed within a few minutes, with comprehensive signal metadata describing\
+      \ all test coverage areas."
+    - QA agent performed thorough verification (reviewed code, ran tests, confirmed
+      requirements coverage) in only 3 minutes, though was initially blocked by missing
+      dev dependencies in its environment.
+    - Watcher agent correctly assessed the workflow as successful despite the eventual
+      DSL-level failure classification, indicating good observational judgment but
+      inability to prevent the tmux session death.
     strengths: []
     weaknesses: []
     best_practices: []

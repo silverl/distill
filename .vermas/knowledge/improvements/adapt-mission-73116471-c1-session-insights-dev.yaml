@@ -1,0 +1,27 @@
+id: adapt-mission-73116471-c1-session-insights-dev
+date: '2026-02-05T22:44:58.496471'
+type: workflow_change
+target: workflow/session-insights-dev
+change: 'The mission is stalled at 96% (46/48 tasks) with the remaining tasks failing
+  repeatedly across multiple cycles. The current workflow lacks: (1) an automatic
+  escalation mechanism after consecutive failures, (2) a way to skip or defer non-critical
+  blocking tasks, and (3) pre-flight validation that checks whether a task has previously
+  failed before retrying it with the same approach. The learnings explicitly state
+  that ''autonomous retry loops on persistently failing tasks produce no value after
+  2-3 attempts'' and that ''improvement suggestions are only valuable if mechanically
+  enforced.'' This update adds a failure-tracking gate to the engineering instructions
+  and explicitly addresses the negative-path-cli-tests blocker by instructing the
+  agent to diagnose root cause before retrying.'
+before_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: 0.0
+  token_usage: null
+after_metrics:
+  revision_rate: null
+  avg_duration: null
+  success_rate: null
+  token_usage: null
+validated: false
+impact: null
+notes: null
