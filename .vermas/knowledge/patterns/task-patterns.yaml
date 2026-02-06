@@ -1,11 +1,12 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - The dev agent correctly decomposed the task into three independent modules (narrative.py,
-    formatters/project.py, formatters/weekly.py) with CLI integration and parser updates.
-    Each module had corresponding tests (159, 184, 200, 126 LOC respectively). This
-    separation of concerns enabled clean testing and review. The architecture pattern
-    of one formatter per output type with a grouping utility function is reusable.
+  - Creating derive_project_from_cwd() in a shared project_utils.py module allowed
+    claude.py, codex.py, and vermas.py parsers to all use identical project detection
+    logic, replacing three separate naive Path(cwd).name implementations. This pattern
+    of extracting shared utilities from duplicated parser logic reduces inconsistencies
+    and makes edge case fixes (like home directory rejection) apply uniformly across
+    all parsers.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -46,11 +47,12 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - The dev delivered 50 new tests across 4 test files that all passed alongside the
-    existing 395 tests, demonstrating zero regressions. Test files mirrored source
-    file structure (test_narrative.py, test_project.py, test_weekly.py, test_project_derivation.py).
-    This test-per-module pattern ensures each component is independently verifiable
-    and regression-safe.
+  - 'The project_utils.py test suite demonstrates a thorough approach to path-based
+    functionality testing: known parent directories (github, projects, repos), case
+    insensitivity, trailing slashes, nested paths, and invalid paths (root, home dirs,
+    system dirs like /tmp, /var). Testing 18 distinct path patterns caught the home
+    directory bug before release. This pattern of exhaustive path normalization testing
+    should be applied to any filesystem-path-dependent logic.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -135,11 +137,12 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - QA approved the implementation by reviewing the dev's branch work and running
-    tests in the worktree, but the workflow signaled 'complete' without verifying
-    that source code actually reached main. A post-merge Gate 2 check (git diff main
-    -- src/ tests/ confirms non-zero additions) would have caught this. The pre-signal-check.sh
-    script needs to verify code presence on main, not just in the working tree.
+  - QA identified that derive_project_from_cwd() incorrectly returned usernames for
+    home directory paths like /Users/dev and /home/user, contradicting the function's
+    own docstring. The dev fixed this within 3 minutes by adding _is_home_directory()
+    and 3 targeted tests. This pattern shows QA adds genuine value by testing boundary
+    conditions the original developer overlooked, and rapid turnaround is possible
+    when the fix scope is clearly specified.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -368,11 +371,12 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - 'After 9 occurrences of branch merges creating artifact-only commits (code on
-    branch lost during merge), the project mandated direct-to-main commits. This workflow
-    followed that mandate: recovery commit 636affe went directly to main, tests were
-    validated, and no code was lost. The 8/8 success rate for direct-to-main vs 0/9
-    for branch merges is now a proven pattern, not a hypothesis.'
+  - "Two workflows ran concurrently \u2014 narrative-quality-measurer succeeded in\
+    \ getting source code onto main (a5a01caa has src/ changes), while project-detection-measurer\
+    \ failed despite identical workflow structure. The inconsistency suggests the\
+    \ merge failure is timing or ordering dependent rather than a deterministic bug.\
+    \ When multiple worktree-based tasks complete near-simultaneously, some 'Complete\
+    \ task' commits capture source code while others capture only artifacts."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -688,11 +692,12 @@ patterns:
   sample_count: 1
 - pattern: deployment/*
   insights:
-  - All 8 successful code deliveries in this project used direct-to-main commits,
-    while all 10 branch-merge attempts lost source code. The workflow orchestration
-    layer that merges task branches to main has a systematic bug that stages only
-    .vermas/ artifacts and drops src/tests changes. Until the merge process is fixed,
-    all task delivery must commit directly to main.
+  - Despite successful implementation (496+ LOC), QA approval, and 468 passing tests,
+    the 'Complete task' commit (a08504fa) on main contains only workflow artifacts
+    (signals, session logs, .coverage files) with zero changes to src/ or tests/ directories.
+    The actual source code exists only on the task branch (commits e0489822, fb46d9a0).
+    This is the 10th occurrence of the merge-drops-source pattern, proving the worktree/branch
+    merge workflow systematically fails to get source code onto main.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null

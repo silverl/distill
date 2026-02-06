@@ -1,18 +1,15 @@
 agents:
   general:
     learnings:
-    - 'Dev agent performed well: implemented 1,268 LOC across 9 source files with
-      50 tests in approximately 8 minutes. Architecture was sound with clean module
-      separation. The implementation directly addressed the stated problem (core features
-      stalled at 0% despite 48 ''completed'' tasks).'
-    - "QA agent correctly identified missing functionality in initial review (needs_revision\
-      \ signal at 06:34), then properly approved after dev delivered. However, QA\
-      \ did not verify that code survived the merge to main \u2014 approval was based\
-      \ on worktree state, not main branch state."
-    - "Watcher agent correctly orchestrated the workflow timeline and agent notifications\
-      \ but the final merge/commit step systematically dropped source code, producing\
-      \ an artifact-only commit. The watcher's 'complete' signal was premature \u2014\
-      \ it should have verified main branch diff before concluding."
+    - Dev agent completed implementation in ~6 minutes (07:59 to 08:06) including
+      5 new/modified source files and 25 tests, showing efficient execution of well-scoped
+      tasks.
+    - "QA agent provided actionable, specific feedback \u2014 identifying the exact\
+      \ function, the contradicting docstring, and requesting 3 specific test cases\
+      \ \u2014 enabling a 3-minute fix turnaround rather than vague revision requests."
+    - "The dev-QA signal-based interaction completed the full cycle (initial review\
+      \ \u2192 revision \u2192 re-review \u2192 approval) in under 15 minutes with\
+      \ 2 revision rounds, demonstrating efficient async coordination."
     strengths: []
     weaknesses: []
     best_practices: []
