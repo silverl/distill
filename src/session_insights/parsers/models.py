@@ -137,6 +137,10 @@ class BaseSession(BaseModel):
     source: str = "unknown"
     summary: str = ""
 
+    # Project and narrative (mission: project-based narrative insights)
+    project: str = ""
+    narrative: str = ""
+
     # Raw parser data
     messages: list[Message] = Field(default_factory=list)
     tool_calls: list[ToolCall] = Field(default_factory=list)

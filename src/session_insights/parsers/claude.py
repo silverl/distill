@@ -194,6 +194,13 @@ class ClaudeParser:
         for tool_use in pending_tool_uses.values():
             tool_calls.append(tool_use)
 
+        # Derive project from cwd
+        project = ""
+        if cwd:
+            name = Path(cwd).name
+            if name and name != "/":
+                project = name
+
         session = ClaudeSession(
             session_id=session_id,
             timestamp=first_timestamp,
@@ -204,6 +211,7 @@ class ClaudeParser:
             cwd=cwd,
             version=version,
             metadata=metadata,
+            project=project,
         )
 
         self._enrich_session(session)

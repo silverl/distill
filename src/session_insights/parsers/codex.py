@@ -208,6 +208,13 @@ class CodexParser:
         for tool_use in pending_tool_uses.values():
             tool_calls.append(tool_use)
 
+        # Derive project from cwd
+        project = ""
+        if cwd:
+            name = Path(cwd).name
+            if name and name != "/":
+                project = name
+
         return CodexSession(
             session_id=session_id,
             timestamp=first_timestamp,
@@ -218,6 +225,7 @@ class CodexParser:
             cwd=cwd,
             version=version,
             metadata=metadata,
+            project=project,
         )
 
     def _load_entries(self, file_path: Path) -> list[dict[str, Any]] | None:
