@@ -1,15 +1,16 @@
 agents:
   general:
     learnings:
-    - The dev agent produced substantive code (~256 LOC across 5 files including a
-      new narrative_quality.py measurer) but failed to commit any of it to the branch,
-      repeating the 'uncommitted-completion' pattern seen in M2e-C5.
-    - The QA agent for the related final-kpi-verification task correctly identified
-      missing deliverables (KPI_FINAL.md) and signaled needs_revision, showing QA
-      gates are functioning even when dev execution fails.
-    - "The worktree branch HEAD matches main's HEAD (23490885 'Planning workflow artifacts'),\
-      \ confirming zero commits were made by the dev agent on its task branch \u2014\
-      \ only planning artifacts exist."
+    - The dev agent's session was contaminated with a prior debug meeting about mission-b630c874,
+      causing it to investigate an unrelated failure instead of focusing on the assigned
+      fix-project-names-edge-cases task. Despite this, code was ultimately produced
+      on the branch.
+    - "QA agent (Codex-based) correctly identified the empty delivery with a needs_revision\
+      \ signal, but the workflow still concluded as 'success' \u2014 indicating the\
+      \ success classification may be based on workflow completion rather than code-on-main\
+      \ verification."
+    - The watcher agent produced 159 lines of trace but the workflow lacked a gate
+      to verify source code reached main before marking success.
     strengths: []
     weaknesses: []
     best_practices: []

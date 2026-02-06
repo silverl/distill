@@ -1,11 +1,11 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - The wire-weekly-digest-pipeline task (commit c29c088c) succeeded by importing
-    and calling an existing WeeklyDigestFormatter rather than building new functionality.
-    The +44 LOC change across 3 files was small, focused, and delivered real working
-    code. Integration-style tasks that wire existing components have a much higher
-    success rate than greenfield implementation tasks in this project.
+  - Claude Code encodes project paths by replacing / with - (e.g., -Users-nikpatel-Documents-GitHub-vermas).
+    Decoding requires a heuristic using known parent directory names (_KNOWN_PARENT_DIRS)
+    to determine where the project name begins. The dev's approach of walking segments
+    right-to-left until hitting a known parent is robust and handles hyphenated project
+    names correctly. This pattern is reusable for any path-encoding scheme.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -47,17 +47,18 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - Creating a dedicated test file (test_verify_all_kpis.py, +257 LOC) that programmatically
-    verifies all mission KPIs provides a reusable, repeatable gate. This approach
-    converts subjective 'done' signals into objective pass/fail checks. The test suite
-    caught failures in 4/5 KPIs that would otherwise have been claimed as passing.
+  - QA agent sent needs_revision signal when it found 'git log main..HEAD empty' in
+    the worktree, correctly identifying that no implementation had been committed
+    yet. This early detection is valuable but the workflow still ultimately claimed
+    success despite the empty main delivery. The QA check should be extended to verify
+    that code reaches main, not just that it exists on the branch.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - testing
-  - technical
+  - process
   sample_count: 1
 - pattern: code-recovery/*
   insights:
@@ -366,11 +367,12 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - The watcher agent confirmed QA's needs_revision signal was correct ('no implementation
-    yet') and noted dev was actively creating the verification script. This three-agent
-    coordination (dev-qa-watcher) with the watcher providing progress confirmation
-    helped maintain workflow momentum. The full cycle completed in ~5 minutes after
-    the revision request.
+  - "The dev agent trace shows it spent most of its time investigating a completely\
+    \ different failed mission (b630c874 claude-parser) via a debug meeting, rather\
+    \ than working on the assigned fix-project-names-edge-cases task. The dev session\
+    \ was reused/inherited from a prior meeting context. This suggests agent session\
+    \ isolation is insufficient \u2014 each workflow task should get a clean agent\
+    \ context without prior meeting state leaking in."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -690,11 +692,13 @@ patterns:
   sample_count: 1
 - pattern: deployment/*
   insights:
-  - 'For the 12th time, a successful implementation was committed to a task branch
-    (71345895, +540 LOC across 8 src/test files) but the merge commit on main (f7d8691e)
-    contains only workflow artifacts (23 files: .vermas/, .worktrees/, insights/)
-    with zero source code. The direct-to-main mandate from prior reviews was not followed.
-    Recovery requires selective file checkout from the branch.'
+  - 'This is the 12th occurrence of the merge-drops-source pattern where a branch
+    contains real code (+359 LOC across 6 files) but the merge commit to main contains
+    only artifact/metadata changes. The direct-to-main mandate (10/10 success rate)
+    was already established but was not followed in this workflow. Worktree-based
+    workflows continue to fail at the merge step. The consistent mitigation is: never
+    merge branches, always commit directly to main or use selective file checkout
+    (git checkout branch -- file).'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -799,11 +803,13 @@ patterns:
   sample_count: 1
 - pattern: code-quality/*
   insights:
-  - Implement a dedicated quality gate function (needs_resynthesis) that checks content
-    against multiple criteria (XML tag detection, minimum word count) before accepting
-    it. When content fails the gate, regenerate from structured metadata rather than
-    attempting to patch bad input. This separates validation logic from generation
-    logic cleanly.
+  - 'The dev created a well-structured derive_project_name() utility in models.py
+    that handles worktree paths (.worktrees/branch -> parent project), git worktree
+    paths (.git/worktrees/name), Claude-encoded project dirs (-Users-name-GitHub-proj),
+    root paths, and trailing slashes. This consolidated duplicate derivation logic
+    from claude.py and codex.py into one tested function with 20+ unit tests. This
+    is a strong pattern for any path-parsing utility: enumerate edge cases explicitly,
+    centralize into one function, test each case independently.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
