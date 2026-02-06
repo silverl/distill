@@ -1,9 +1,8 @@
 ---
-status: pending
+status: done
 priority: medium
-workflow: 
+workflow: null
 ---
-
 # Fix project name derivation edge cases to reach 95%+ KPI
 
 Based on the KPI baseline measurements from the previous task, fix remaining project name derivation issues.
