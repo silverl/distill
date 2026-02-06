@@ -1,9 +1,8 @@
 ---
-status: pending
+status: done
 priority: medium
-workflow: 
+workflow: null
 ---
-
 # Run programmatic KPI verification and record exact baselines
 
 This is the CRITICAL first task. Run the full session-insights analyze pipeline on real data and measure each KPI with exact numbers:
