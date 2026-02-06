@@ -1,18 +1,18 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - To extract key decisions from unstructured session summaries, the implementation
-    scans for decision-indicating keywords ('chose', 'decided', 'switched to', 'picked',
-    'selected') with deduplication via a seen set. This pattern is reusable for extracting
-    other semantic content categories (e.g., 'blocked by', 'discovered that', 'reverted')
-    from free-text summaries without requiring structured metadata.
+  - The dev agent's session (31ed9e2f) was initially used for a debug meeting about
+    a completely different mission (b630c874), then repurposed for the weekly-digest
+    implementation task (42d76466). While this worked here, reusing agent sessions
+    across unrelated tasks risks context contamination where previous task context
+    influences current decisions. Fresh sessions per task provide cleaner boundaries.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - architecture
-  - technical
+  - process
   sample_count: 1
 - pattern: git-workflow/*
   insights:
@@ -31,27 +31,26 @@ patterns:
   sample_count: 1
 - pattern: verification/*
   insights:
-  - The pre-signal-check.sh script's artifact-only detection compares main..HEAD,
-    which passes if ANY prior commit on the branch has src/tests changes. This allows
-    artifact-only commits to slip through when prior successful commits exist. The
-    fix is to compare HEAD~1..HEAD to verify the most recent commit itself contains
-    source changes.
+  - 'The workflow passed all agent-level checks (tests pass, code committed) but failed
+    at the delivery level because verification happened on the worktree branch, not
+    on main. Pre-completion verification must include: (1) source files exist on main,
+    (2) the main commit itself contains src/tests diffs, not just the branch. Without
+    this, artifact-only commits on main pass all gates.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - verification
-  - technical
+  - process
   sample_count: 1
 - pattern: testing/*
   insights:
-  - 'The dev agent added TestGenerateProjectNotes class with tests that exercise the
-    complete pipeline: generate_project_notes() writes to disk, verifies file existence,
-    checks all required markdown sections (frontmatter, overview, timeline, milestones,
-    key decisions, related sessions), and validates filtering logic (skip unassigned/unknown).
-    This pattern catches integration failures that unit tests on individual formatter
-    methods would miss.'
+  - The dev added 28 tests covering weekly grouping, formatting, challenge detection,
+    and file output pipeline in the same commit as the implementation. When QA requested
+    revisions, having existing tests as a safety net allowed the dev to refactor sections
+    confidently without introducing regressions. The full suite went from pre-existing
+    failures only to 469 passing (2 unrelated failures).
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -136,11 +135,12 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - 'QA agent identified specific requirement gaps (overview, timeline, milestones,
-    key decisions extraction, missing test) and signaled needs_revision. Dev agent
-    responded within ~160 seconds with targeted enhancements: keyword-based decision
-    extraction and 5 new tests. The specificity of QA feedback (naming exact missing
-    sections) enabled rapid, focused revision rather than vague rework.'
+  - The QA agent (Codex) identified that the initial formatter output used old section
+    names (Overview/Accomplishments) instead of the mission-spec sections (What Got
+    Done/Challenges/etc.) and that no CLI/core path wrote weekly/ outputs. This single
+    needs_revision round with specific, actionable feedback enabled the dev to fix
+    all issues in under 5 minutes. Concrete QA feedback that names exact spec mismatches
+    is more effective than generic 'doesn't match spec' feedback.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -222,19 +222,17 @@ patterns:
   sample_count: 1
 - pattern: debugging/*
   insights:
-  - 'The 9-minute workflow consumed 3 agent sessions (dev, QA, watcher) and produced
-    578KB of trace data, 25+ artifact files, but 0 lines of source code on main. The
-    actual code (200 LOC: weekly formatter redesign, parser fallback, test updates)
-    exists on branch e7659080 and is recoverable via selective checkout. The ratio
-    of workflow overhead to useful output indicates the orchestration layer is the
-    bottleneck, not the dev capability.'
+  - QA's initial test run failed because pytest-cov was not installed in the environment.
+    The dev resolved this by adding pytest-cov to pyproject.toml dev dependencies.
+    Workflow environments should validate tool dependencies before execution starts,
+    not discover them during QA review.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
   - debugging
-  - process
+  - technical
   sample_count: 1
 - pattern: integration/*
   insights:
@@ -339,11 +337,11 @@ patterns:
   sample_count: 1
 - pattern: workflow-coordination/*
   insights:
-  - "QA agent reviewed the worktree before dev had started implementing (signal 6a92353d\
-    \ at 08:15:04), correctly finding 'No implementation found' and signaling needs_revision.\
-    \ Dev then implemented and committed by 08:18:50. This early QA review is technically\
-    \ correct but wasteful \u2014 gating QA review on dev's 'done' signal would eliminate\
-    \ the noisy first revision cycle and reduce wall-clock time."
+  - "The dev agent implemented, signaled done, QA reviewed and signaled needs_revision,\
+    \ dev revised and re-signaled done, QA approved \u2014 all within 388 seconds.\
+    \ The signal-based async coordination (without meetings) is efficient for well-scoped\
+    \ tasks with clear acceptance criteria. QA's specificity in revision feedback\
+    \ enabled single-round fixes."
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -441,12 +439,11 @@ patterns:
   sample_count: 1
 - pattern: resilience/*
   insights:
-  - When the dev agent's Claude Code session terminated mid-implementation, the watcher
-    agent detected the failure and correctly signaled 'blocked'. The dev agent restarted,
-    recovered context from partial on-disk changes, and completed the implementation
-    within ~5 minutes. This crash-recover pattern demonstrates that agent session
-    crashes are recoverable if partial work is persisted to disk and the watcher monitors
-    agent liveness.
+  - When the dev agent's session crashed mid-implementation, the watcher detected
+    it and signaled 'blocked'. The dev agent restarted, found partial work already
+    on disk, and completed implementation within minutes. Crash recovery works when
+    agents persist work to files incrementally rather than holding everything in memory
+    until final commit.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -756,13 +753,11 @@ patterns:
   sample_count: 1
 - pattern: code-delivery/*
   insights:
-  - The actual narrative implementation (+135 LOC across 6 src/test files) exists
-    only on worktree branch commit 56e61bc2, while the main branch commit a4d2b8ea
-    contains 0 src/test file changes. This is the 12th occurrence of merge-drops-source.
-    The worktree workflow creates a separate branch, the dev commits there, but the
-    'Complete task' commit on main captures only artifact files (.vermas/, insights/,
-    .worktrees/) without the source code. Direct-to-main commits bypass this failure
-    mode entirely.
+  - When the workflow infrastructure uses git worktrees, dev agents commit to task
+    branches rather than main. The 'Complete task' commit on main captures only workflow
+    artifacts (.vermas/, insights/, .worktrees/) without source code. This is the
+    persistent root cause of the merge-drops-source failure mode (12+ occurrences).
+    Direct-to-main commits bypass this entirely.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null

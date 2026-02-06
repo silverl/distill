@@ -1,16 +1,17 @@
 agents:
   general:
     learnings:
-    - Dev agent (claude) responded effectively to QA feedback, making targeted changes
-      to key decisions extraction logic and adding exactly the missing test coverage
-      identified by QA, completing revision in under 3 minutes.
-    - QA agent (codex) provided actionable, specific feedback identifying both requirement
-      gaps and environment issues (missing pytest-cov), enabling the dev to address
-      all concerns in a single revision round.
-    - The workflow achieved its stated goal (project note generation with all required
-      sections) but the merge mechanism still failed to preserve source changes on
-      main, indicating the worktree-based workflow doesn't enforce the direct-to-main
-      mandate from MEMORY.md.
+    - "Dev agent responded effectively to QA's needs_revision signal, completing all\
+      \ required changes (new section names, core.py integration, CLI wiring, 28 tests)\
+      \ in a single revision round of approximately 5 minutes \u2014 demonstrating\
+      \ that specific QA feedback enables fast turnaround."
+    - QA agent (Codex) provided high-quality, actionable feedback identifying both
+      functional gaps (missing sections, no CLI/core wiring) and environmental issues
+      (missing pytest-cov), enabling the dev to address everything in one pass without
+      back-and-forth.
+    - Watcher agent observed the workflow but the dev agent's session was loaded with
+      context from an unrelated debug meeting (mission-b630c874), suggesting the session
+      management system doesn't provide clean isolation between tasks.
     strengths: []
     weaknesses: []
     best_practices: []
