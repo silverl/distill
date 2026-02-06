@@ -1,16 +1,15 @@
 agents:
   general:
     learnings:
-    - 'The dev agent (collaboration role) effectively ran a debug meeting solo when
-      no other participants joined (broadcast_count: 0), investigating artifacts,
-      identifying root cause, and creating 3 action items within ~2 minutes of investigation.'
-    - The watcher agent (dev role) performed thorough real-data validation by running
-      the parser against 16,522 sessions, correctly distinguishing data quality issues
-      (empty files, summary-only sessions) from parser failures, and providing precise
-      three-tier KPI measurements.
-    - Both agents operated in meeting context with different meeting IDs (mtg-7c15df84
-      for debug, mtg-61ba1b5b for planning), showing the workflow effectively parallelized
-      investigation and execution across concurrent meetings.
+    - Dev agent responded efficiently to QA feedback, addressing all three uncovered
+      modules in a single implementation pass rather than incrementally fixing one
+      at a time, which minimized round-trips.
+    - QA agent provided precise, quantitative feedback (88% coverage, named the 3
+      zero-coverage modules, specified the correct command with --extra dev flag),
+      which eliminated ambiguity and enabled rapid dev response.
+    - "The watcher agent's role in this workflow was minimal \u2014 the dev-QA coordination\
+      \ was tight enough that external monitoring added little value for a focused\
+      \ testing task."
     strengths: []
     weaknesses: []
     best_practices: []
