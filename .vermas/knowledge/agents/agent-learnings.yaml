@@ -1,17 +1,16 @@
 agents:
   general:
     learnings:
-    - "Dev agent demonstrated resilience by recovering from a mid-implementation crash,\
-      \ completing 135 LOC across 6 files including 110 lines of tests, but committed\
-      \ to the worktree branch instead of main \u2014 continuing the 12-cycle pattern\
-      \ of branch code not reaching main."
-    - QA agent acted quickly and correctly, running git diff within the first 2 minutes
-      and signaling needs_revision when no source changes were found. However, QA
-      did not re-review after the dev completed work on the branch, allowing the task
-      to be marked 'done' without verifying code was on main.
-    - Watcher agent provided excellent observability with two well-timed signals (blocked
-      at crash detection, progress during recovery), giving accurate file-level change
-      tracking that could inform automated recovery decisions in future workflows.
+    - Dev agent (claude) responded effectively to QA feedback, making targeted changes
+      to key decisions extraction logic and adding exactly the missing test coverage
+      identified by QA, completing revision in under 3 minutes.
+    - QA agent (codex) provided actionable, specific feedback identifying both requirement
+      gaps and environment issues (missing pytest-cov), enabling the dev to address
+      all concerns in a single revision round.
+    - The workflow achieved its stated goal (project note generation with all required
+      sections) but the merge mechanism still failed to preserve source changes on
+      main, indicating the worktree-based workflow doesn't enforce the direct-to-main
+      mandate from MEMORY.md.
     strengths: []
     weaknesses: []
     best_practices: []

@@ -1,12 +1,11 @@
 patterns:
 - pattern: architecture/*
   insights:
-  - The narrative feature was implemented as a small module (narrative.py, 9 lines)
-    with targeted integration points (obsidian.py +7, templates.py +1, 2 parser files
-    +4 each). This modular design meant the dev agent could recover from a crash and
-    complete the work incrementally, as each file change was independent. Features
-    that touch fewer files with smaller changes are more resilient to agent session
-    failures.
+  - To extract key decisions from unstructured session summaries, the implementation
+    scans for decision-indicating keywords ('chose', 'decided', 'switched to', 'picked',
+    'selected') with deduplication via a seen set. This pattern is reusable for extracting
+    other semantic content categories (e.g., 'blocked by', 'discovered that', 'reverted')
+    from free-text summaries without requiring structured metadata.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -47,12 +46,12 @@ patterns:
   sample_count: 1
 - pattern: testing/*
   insights:
-  - "The pre-signal-check.sh script has 4 validation steps but none verify that the\
-    \ target branch (main) actually received source code changes from the task branch.\
-    \ A simple check like 'git diff HEAD~1..HEAD --stat -- src/ tests/ | grep -q .'\
-    \ after the merge commit would catch artifact-only merges before signaling done.\
-    \ This is the root cause of 12 repeated failures \u2014 the gate exists but validates\
-    \ the wrong thing."
+  - 'The dev agent added TestGenerateProjectNotes class with tests that exercise the
+    complete pipeline: generate_project_notes() writes to disk, verifies file existence,
+    checks all required markdown sections (frontmatter, overview, timeline, milestones,
+    key decisions, related sessions), and validates filtering logic (skip unassigned/unknown).
+    This pattern catches integration failures that unit tests on individual formatter
+    methods would miss.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -137,12 +136,11 @@ patterns:
   sample_count: 1
 - pattern: code-review/*
   insights:
-  - The QA agent correctly identified the failure at 08:50:57 UTC, signaling 'needs_revision'
-    with message 'No code or test changes on this branch (diff vs main is empty).
-    Requirements cannot be verified; nothing to QA.' Despite this explicit rejection,
-    the workflow still completed with status 'success' and committed artifact-only
-    changes to main. The QA gate exists but its rejection signal does not block the
-    completion pathway.
+  - 'QA agent identified specific requirement gaps (overview, timeline, milestones,
+    key decisions extraction, missing test) and signaled needs_revision. Dev agent
+    responded within ~160 seconds with targeted enhancements: keyword-based decision
+    extraction and 5 new tests. The specificity of QA feedback (naming exact missing
+    sections) enabled rapid, focused revision rather than vague rework.'
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -370,12 +368,11 @@ patterns:
   sample_count: 1
 - pattern: workflow/*
   insights:
-  - "Two workflows ran concurrently \u2014 narrative-quality-measurer succeeded in\
-    \ getting source code onto main (a5a01caa has src/ changes), while project-detection-measurer\
-    \ failed despite identical workflow structure. The inconsistency suggests the\
-    \ merge failure is timing or ordering dependent rather than a deterministic bug.\
-    \ When multiple worktree-based tasks complete near-simultaneously, some 'Complete\
-    \ task' commits capture source code while others capture only artifacts."
+  - The workflow produced real source changes (+17 lines project.py, +132 lines test_project.py)
+    on the worktree branch (c0f916c4), but the main branch commit (e1c5b4f0) contains
+    only workflow artifacts and insight files (0 src/ or tests/ changes). This continues
+    the merge-drops-source pattern (now 12th occurrence). The direct-to-main mandate
+    exists but wasn't enforced by this workflow's merge mechanism.
   revision_rate: null
   success_rate: 1.0
   avg_duration: null
@@ -474,15 +471,13 @@ patterns:
   sample_count: 1
 - pattern: process/*
   insights:
-  - "The pre-signal-check.sh script (which validates deliverables before signaling\
-    \ done) did not catch the uncommitted-completion failure mode where work exists\
-    \ in a worktree but isn't committed. This represents a gap in the verification\
-    \ pipeline \u2014 the script checks git status on the main branch but doesn't\
-    \ detect code sitting in worktrees. Pre-signal validation should verify that all\
-    \ deliverable files are tracked in git on the current branch, not just that the\
-    \ working tree is clean."
+  - The total workflow completed in 442 seconds (~7.4 minutes) including QA review,
+    needs_revision signal, dev revision, and final done signal. The QA review at T+~270s
+    and dev completion at T+~430s shows the revision round added only ~160 seconds.
+    Codex as QA agent provided fast automated review, enabling tight feedback loops
+    that would take much longer with human review.
   revision_rate: null
-  success_rate: 0.0
+  success_rate: 1.0
   avg_duration: null
   recommended_workflow: null
   tags:
