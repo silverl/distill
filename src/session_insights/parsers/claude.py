@@ -355,6 +355,10 @@ class ClaudeParser:
                 )
             session.outcomes = outcomes
 
+        # Generate narrative from summary
+        if not session.narrative and session.summary:
+            session.narrative = session.summary
+
         # Auto-tag based on content
         if not session.tags:
             tags: list[str] = []

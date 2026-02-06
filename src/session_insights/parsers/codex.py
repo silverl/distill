@@ -215,7 +215,7 @@ class CodexParser:
             if name and name != "/":
                 project = name
 
-        return CodexSession(
+        session = CodexSession(
             session_id=session_id,
             timestamp=first_timestamp,
             messages=messages,
@@ -227,6 +227,19 @@ class CodexParser:
             metadata=metadata,
             project=project,
         )
+
+        self._enrich_session(session)
+        return session
+
+    def _enrich_session(self, session: CodexSession) -> None:
+        """Enrich a parsed session with summary and narrative."""
+        if not session.summary:
+            user_msgs = [m for m in session.messages if m.role == "user"]
+            if user_msgs:
+                session.summary = user_msgs[0].content[:200]
+
+        if not session.narrative and session.summary:
+            session.narrative = session.summary
 
     def _load_entries(self, file_path: Path) -> list[dict[str, Any]] | None:
         """Load entries from a file, handling both JSON and JSONL formats.
