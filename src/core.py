@@ -869,6 +869,13 @@ def generate_intake(
         logger.info("No new content items to process")
         return []
 
+    # Archive raw items before any processing
+    from distill.intake.archive import archive_items, build_daily_index
+
+    archive_path = archive_items(all_items, output_dir)
+    index_path = build_daily_index(all_items, output_dir)
+    logger.info("Archived %d raw items", len(all_items))
+
     # Build context
     context = prepare_daily_context(all_items)
 
@@ -890,7 +897,7 @@ def generate_intake(
     prose = synthesizer.synthesize_daily(context, memory_context=memory_text)
 
     # Fan-out: publish to each enabled target
-    written: list[Path] = []
+    written: list[Path] = [archive_path, index_path]
     for pub_name in publishers:
         try:
             publisher = create_intake_publisher(pub_name)

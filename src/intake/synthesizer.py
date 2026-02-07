@@ -44,19 +44,23 @@ class IntakeSynthesizer:
         )
 
     def _call_claude(self, system_prompt: str, user_prompt: str, label: str) -> str:
-        """Call Claude CLI with combined prompt."""
+        """Call Claude CLI with prompt piped via stdin.
+
+        Uses stdin to avoid OS argument length limits when the prompt
+        is very large (e.g. hundreds of RSS articles).
+        """
         full_prompt = f"{system_prompt}\n\n---\n\n{user_prompt}"
 
         cmd: list[str] = ["claude", "-p"]
         if self._config.model:
             cmd.extend(["--model", self._config.model])
-        cmd.append(full_prompt)
 
         logger.debug("Calling Claude CLI for intake synthesis (%s)", label)
 
         try:
             result = subprocess.run(
                 cmd,
+                input=full_prompt,
                 capture_output=True,
                 text=True,
                 timeout=self._config.claude_timeout,

@@ -62,8 +62,14 @@ def prepare_daily_context(
                 seen_tags.add(tag)
 
     # Build combined text for LLM prompt
+    # Sort by recency, cap at 50 items to keep within context limits
+    sorted_items = sorted(
+        items, key=lambda i: i.published_at or datetime.min, reverse=True
+    )
+    prompt_items = sorted_items[:50]
+
     parts: list[str] = []
-    for item in sorted(items, key=lambda i: i.published_at or datetime.min):
+    for item in prompt_items:
         header = f"## {item.title}" if item.title else "## (untitled)"
         meta_parts: list[str] = []
         if item.site_name:
