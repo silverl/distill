@@ -23,8 +23,23 @@ dev = [
 distill = "distill.cli:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = [
+    "distill",
+    "distill.analyzers",
+    "distill.blog",
+    "distill.formatters",
+    "distill.journal",
+    "distill.measurers",
+    "distill.models",
+    "distill.parsers",
+]
+
+[tool.setuptools.package-dir]
+distill = "src"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -32,8 +47,8 @@ addopts = "-v --cov=distill --cov-report=term-missing"
 
 [tool.coverage.run]
 omit = [
-    "distill/cli.py",
-    "distill/__main__.py",
+    "src/cli.py",
+    "src/__main__.py",
 ]
 
 [tool.mypy]
