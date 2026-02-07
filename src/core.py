@@ -871,15 +871,35 @@ def generate_intake(
         logger.info("No new content items to process")
         return []
 
-    # Archive raw items before any processing
+    # Enrich items: full-text extraction for short articles, then auto-tag
+    from distill.intake.fulltext import enrich_items as enrich_fulltext
+    from distill.intake.tagging import enrich_tags
+
+    enrich_fulltext(all_items, min_word_threshold=100, max_concurrent=20)
+    logger.info("Full-text enrichment complete")
+
+    enrich_tags(all_items)
+    logger.info("Auto-tagging complete")
+
+    # Archive raw items after enrichment
     from distill.intake.archive import archive_items, build_daily_index
 
     archive_path = archive_items(all_items, output_dir)
     index_path = build_daily_index(all_items, output_dir)
-    logger.info("Archived %d raw items", len(all_items))
+    logger.info("Archived %d items", len(all_items))
+
+    # Cluster items by topic for better LLM context
+    from distill.intake.clustering import cluster_items, render_clustered_context
+
+    clusters = cluster_items(all_items, max_clusters=8, min_cluster_size=2)
+    if clusters:
+        clustered_text = render_clustered_context(clusters, max_items_per_cluster=8)
+        logger.info("Clustered %d items into %d topics", len(all_items), len(clusters))
+    else:
+        clustered_text = ""
 
     # Build context
-    context = prepare_daily_context(all_items)
+    context = prepare_daily_context(all_items, clustered_text=clustered_text)
 
     if dry_run:
         print(f"[DRY RUN] Would synthesize intake digest for {context.date}")

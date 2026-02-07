@@ -25,12 +25,17 @@ class DailyIntakeContext(BaseModel):
 def prepare_daily_context(
     items: list[ContentItem],
     target_date: date | None = None,
+    clustered_text: str = "",
 ) -> DailyIntakeContext:
     """Assemble context for daily intake synthesis.
 
     Args:
         items: Content items to include.
         target_date: The date for this digest. Defaults to today.
+        clustered_text: Pre-rendered topic-clustered context from the
+            clustering module.  When provided, this replaces the flat
+            article list in ``combined_text`` for better thematic
+            grouping in the LLM prompt.
 
     Returns:
         Fully assembled DailyIntakeContext.
@@ -62,32 +67,35 @@ def prepare_daily_context(
                 seen_tags.add(tag)
 
     # Build combined text for LLM prompt
-    # Sort by recency, cap at 50 items to keep within context limits
-    sorted_items = sorted(
-        items, key=lambda i: i.published_at or datetime.min, reverse=True
-    )
-    prompt_items = sorted_items[:50]
+    if clustered_text:
+        # Use topic-clustered context for better thematic grouping
+        combined_text = clustered_text
+    else:
+        # Fallback: flat list sorted by recency, capped at 50
+        sorted_items = sorted(
+            items, key=lambda i: i.published_at or datetime.min, reverse=True
+        )
+        prompt_items = sorted_items[:50]
 
-    parts: list[str] = []
-    for item in prompt_items:
-        header = f"## {item.title}" if item.title else "## (untitled)"
-        meta_parts: list[str] = []
-        if item.site_name:
-            meta_parts.append(item.site_name)
-        if item.author:
-            meta_parts.append(f"by {item.author}")
-        if item.url:
-            meta_parts.append(item.url)
-        meta_line = " | ".join(meta_parts)
+        parts: list[str] = []
+        for item in prompt_items:
+            header = f"## {item.title}" if item.title else "## (untitled)"
+            meta_parts: list[str] = []
+            if item.site_name:
+                meta_parts.append(item.site_name)
+            if item.author:
+                meta_parts.append(f"by {item.author}")
+            if item.url:
+                meta_parts.append(item.url)
+            meta_line = " | ".join(meta_parts)
 
-        body = item.body or item.excerpt or "(no content)"
-        # Truncate very long articles for the prompt
-        if len(body) > 2000:
-            body = body[:2000] + "\n\n[... truncated]"
+            body = item.body or item.excerpt or "(no content)"
+            if len(body) > 2000:
+                body = body[:2000] + "\n\n[... truncated]"
 
-        parts.append(f"{header}\n*{meta_line}*\n\n{body}")
+            parts.append(f"{header}\n*{meta_line}*\n\n{body}")
 
-    combined_text = "\n\n---\n\n".join(parts)
+        combined_text = "\n\n---\n\n".join(parts)
 
     return DailyIntakeContext(
         date=target_date,
