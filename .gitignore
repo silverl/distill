@@ -36,6 +36,9 @@ htmlcov/
 # Claude Code
 .claude/
 
+# Generated output
+insights/
+
 # Task / workflow markers
 TASK.md
 AGENTS.md
