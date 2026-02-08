@@ -40,9 +40,7 @@ class IntakeState(BaseModel):
     def prune(self, keep_days: int = 30) -> None:
         """Remove records older than ``keep_days``."""
         cutoff = datetime.now().timestamp() - keep_days * 86400
-        self.records = [
-            r for r in self.records if r.processed_at.timestamp() > cutoff
-        ]
+        self.records = [r for r in self.records if r.processed_at.timestamp() > cutoff]
 
 
 def load_intake_state(output_dir: Path) -> IntakeState:

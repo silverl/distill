@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -103,11 +103,17 @@ class CodexParser:
 
         return unique_files
 
-    def parse_directory(self, path: Path) -> list[CodexSession]:
+    def parse_directory(
+        self,
+        path: Path,
+        *,
+        since: date | None = None,
+    ) -> list[CodexSession]:
         """Parse all Codex sessions from a directory.
 
         Args:
             path: Path to .codex directory or a specific sessions directory
+            since: Only parse files modified on or after this date (uses mtime).
 
         Returns:
             List of parsed CodexSession objects
@@ -116,6 +122,11 @@ class CodexParser:
         sessions: list[CodexSession] = []
 
         session_files = self.discover_sessions(path)
+
+        # Pre-filter by file modification time (much cheaper than parsing)
+        if since is not None:
+            since_ts = datetime.combine(since, datetime.min.time()).timestamp()
+            session_files = [f for f in session_files if f.stat().st_mtime >= since_ts]
 
         for session_file in session_files:
             try:
@@ -169,32 +180,23 @@ class CodexParser:
 
             # Extract timestamp from entry
             entry_timestamp = self._extract_timestamp(entry)
-            if entry_timestamp:
-                if first_timestamp is None or entry_timestamp < first_timestamp:
-                    first_timestamp = entry_timestamp
+            if entry_timestamp and (first_timestamp is None or entry_timestamp < first_timestamp):
+                first_timestamp = entry_timestamp
 
             # Process different entry types
             entry_type = entry.get("type")
 
             if entry_type == "user" or entry_type == "human":
-                self._process_user_entry(
-                    entry, messages, pending_tool_uses, tool_calls
-                )
+                self._process_user_entry(entry, messages, pending_tool_uses, tool_calls)
             elif entry_type == "assistant" or entry_type == "ai":
-                model = self._process_assistant_entry(
-                    entry, messages, pending_tool_uses, model
-                )
+                model = self._process_assistant_entry(entry, messages, pending_tool_uses, model)
             elif entry_type == "message":
                 # Generic message type - determine role from content
-                self._process_generic_message(
-                    entry, messages, pending_tool_uses, tool_calls
-                )
+                self._process_generic_message(entry, messages, pending_tool_uses, tool_calls)
             elif entry_type == "tool_call" or entry_type == "action":
                 self._process_tool_call_entry(entry, pending_tool_uses)
             elif entry_type == "tool_result" or entry_type == "observation":
-                self._process_tool_result_entry(
-                    entry, pending_tool_uses, tool_calls
-                )
+                self._process_tool_result_entry(entry, pending_tool_uses, tool_calls)
 
         # Skip sessions with no messages
         if not messages:
@@ -356,15 +358,11 @@ class CodexParser:
             for item in content:
                 if isinstance(item, dict):
                     if item.get("type") == "tool_result":
-                        self._handle_tool_result(
-                            item, pending_tool_uses, tool_calls, entry
-                        )
+                        self._handle_tool_result(item, pending_tool_uses, tool_calls, entry)
                     elif item.get("type") == "text":
                         text = item.get("text", "")
                         if text:
-                            messages.append(
-                                Message(role="user", content=text, timestamp=timestamp)
-                            )
+                            messages.append(Message(role="user", content=text, timestamp=timestamp))
 
     def _process_assistant_entry(
         self,
@@ -379,9 +377,7 @@ class CodexParser:
         model = entry.get("model", current_model)
 
         if isinstance(content, str) and content:
-            messages.append(
-                Message(role="assistant", content=content, timestamp=timestamp)
-            )
+            messages.append(Message(role="assistant", content=content, timestamp=timestamp))
         elif isinstance(content, list):
             text_parts: list[str] = []
             for item in content:

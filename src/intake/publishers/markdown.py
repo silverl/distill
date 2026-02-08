@@ -20,9 +20,4 @@ class MarkdownIntakePublisher(IntakePublisher):
         return f"{header}{prose}\n"
 
     def daily_output_path(self, output_dir: Path, target_date: date) -> Path:
-        return (
-            output_dir
-            / "intake"
-            / "markdown"
-            / f"intake-{target_date.isoformat()}.md"
-        )
+        return output_dir / "intake" / "markdown" / f"intake-{target_date.isoformat()}.md"

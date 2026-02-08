@@ -17,17 +17,13 @@ class ObsidianIntakePublisher(IntakePublisher):
         return f"{frontmatter}\n{prose}\n"
 
     def daily_output_path(self, output_dir: Path, target_date: date) -> Path:
-        return (
-            output_dir
-            / "intake"
-            / f"intake-{target_date.isoformat()}.md"
-        )
+        return output_dir / "intake" / f"intake-{target_date.isoformat()}.md"
 
     def _build_frontmatter(self, context: DailyIntakeContext) -> str:
         lines = [
             "---",
             f"date: {context.date.isoformat()}",
-            f"type: intake-digest",
+            "type: intake-digest",
             f"items: {context.total_items}",
             f"word_count: {context.total_word_count}",
         ]

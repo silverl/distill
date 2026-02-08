@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -75,7 +74,7 @@ class BrowserIntakeConfig(BaseModel):
 
     @property
     def is_configured(self) -> bool:
-        return True
+        return bool(self.browsers)
 
 
 class LinkedInIntakeConfig(BaseModel):
@@ -88,6 +87,58 @@ class LinkedInIntakeConfig(BaseModel):
         return bool(self.export_path)
 
 
+class SubstackIntakeConfig(BaseModel):
+    """Substack newsletter configuration."""
+
+    blog_urls: list[str] = Field(default_factory=list)
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.blog_urls)
+
+
+class YouTubeIntakeConfig(BaseModel):
+    """YouTube intake configuration."""
+
+    api_key: str = ""
+    credentials_file: str = ""
+    token_file: str = ""
+    fetch_transcripts: bool = True
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.api_key or self.credentials_file)
+
+    @classmethod
+    def from_env(cls) -> YouTubeIntakeConfig:
+        return cls(
+            api_key=os.environ.get("YOUTUBE_API_KEY", ""),
+        )
+
+
+class TwitterIntakeConfig(BaseModel):
+    """Twitter/X intake configuration."""
+
+    export_path: str = ""
+    nitter_feeds: list[str] = Field(default_factory=list)
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.export_path or self.nitter_feeds)
+
+
+class SessionIntakeConfig(BaseModel):
+    """Session intake configuration."""
+
+    session_dirs: list[str] = Field(default_factory=list)
+    include_global: bool = False
+    sources: list[str] = Field(default_factory=lambda: ["claude", "codex"])
+
+    @property
+    def is_configured(self) -> bool:
+        return True  # sessions are always available locally
+
+
 class IntakeConfig(BaseModel):
     """Top-level intake configuration."""
 
@@ -96,13 +147,15 @@ class IntakeConfig(BaseModel):
     reddit: RedditIntakeConfig = Field(default_factory=RedditIntakeConfig)
     browser: BrowserIntakeConfig = Field(default_factory=BrowserIntakeConfig)
     linkedin: LinkedInIntakeConfig = Field(default_factory=LinkedInIntakeConfig)
+    substack: SubstackIntakeConfig = Field(default_factory=SubstackIntakeConfig)
+    youtube: YouTubeIntakeConfig = Field(default_factory=YouTubeIntakeConfig)
+    twitter: TwitterIntakeConfig = Field(default_factory=TwitterIntakeConfig)
+    session: SessionIntakeConfig = Field(default_factory=SessionIntakeConfig)
 
     model: str | None = None
     claude_timeout: int = 180
     target_word_count: int = 800
 
-    domain_blocklist: list[str] = Field(
-        default_factory=lambda: ["google.com", "localhost"]
-    )
+    domain_blocklist: list[str] = Field(default_factory=lambda: ["google.com", "localhost"])
     min_word_count: int = 50
     max_items_per_source: int = 50

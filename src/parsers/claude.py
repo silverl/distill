@@ -2,11 +2,9 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
-
-from pydantic import BaseModel, Field
 
 from .models import BaseSession, Message, SessionOutcome, ToolUsage
 
@@ -50,11 +48,17 @@ class ClaudeParser:
         """Return any errors encountered during parsing."""
         return self._parse_errors.copy()
 
-    def parse_directory(self, path: Path) -> list[ClaudeSession]:
+    def parse_directory(
+        self,
+        path: Path,
+        *,
+        since: date | None = None,
+    ) -> list[ClaudeSession]:
         """Parse all Claude sessions from a directory.
 
         Args:
             path: Path to .claude directory or a specific project directory
+            since: Only parse files modified on or after this date (uses mtime).
 
         Returns:
             List of parsed ClaudeSession objects
@@ -69,24 +73,30 @@ class ClaudeParser:
             if projects_dir.exists():
                 for project_dir in projects_dir.iterdir():
                     if project_dir.is_dir():
-                        sessions.extend(self._parse_project_directory(project_dir))
+                        sessions.extend(self._parse_project_directory(project_dir, since=since))
         elif (path / "projects").exists():
             # .claude directory without the .claude name
             for project_dir in (path / "projects").iterdir():
                 if project_dir.is_dir():
-                    sessions.extend(self._parse_project_directory(project_dir))
+                    sessions.extend(self._parse_project_directory(project_dir, since=since))
         else:
             # Assume it's a project directory directly
-            sessions.extend(self._parse_project_directory(path))
+            sessions.extend(self._parse_project_directory(path, since=since))
 
         return sessions
 
-    def _parse_project_directory(self, project_dir: Path) -> list[ClaudeSession]:
+    def _parse_project_directory(
+        self,
+        project_dir: Path,
+        *,
+        since: date | None = None,
+    ) -> list[ClaudeSession]:
         """Parse all sessions from a single project directory.
 
         Args:
             project_dir: Path to a project directory containing session files.
                          Handles both direct .jsonl files and sessions/ subdirectory.
+            since: Only parse files modified on or after this date (uses mtime).
 
         Returns:
             List of parsed ClaudeSession objects
@@ -103,6 +113,11 @@ class ClaudeParser:
         if sessions_dir.exists() and sessions_dir.is_dir():
             session_files.extend(sessions_dir.glob("*.jsonl"))
             session_files.extend(sessions_dir.glob("*.json"))
+
+        # Pre-filter by file modification time (much cheaper than parsing)
+        if since is not None:
+            since_ts = datetime.combine(since, datetime.min.time()).timestamp()
+            session_files = [f for f in session_files if f.stat().st_mtime >= since_ts]
 
         for session_file in session_files:
             try:
@@ -174,13 +189,9 @@ class ClaudeParser:
                 entry_type = entry.get("type")
 
                 if entry_type == "user":
-                    self._process_user_entry(
-                        entry, messages, pending_tool_uses, tool_calls
-                    )
+                    self._process_user_entry(entry, messages, pending_tool_uses, tool_calls)
                 elif entry_type == "assistant":
-                    model = self._process_assistant_entry(
-                        entry, messages, pending_tool_uses, model
-                    )
+                    model = self._process_assistant_entry(entry, messages, pending_tool_uses, model)
 
         # Skip sessions with no messages
         if not messages:
@@ -284,9 +295,7 @@ class ClaudeParser:
         model = message_data.get("model", current_model)
 
         if isinstance(content, str):
-            messages.append(
-                Message(role="assistant", content=content, timestamp=timestamp)
-            )
+            messages.append(Message(role="assistant", content=content, timestamp=timestamp))
         elif isinstance(content, list):
             text_parts: list[str] = []
             for item in content:

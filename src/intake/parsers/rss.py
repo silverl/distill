@@ -8,14 +8,12 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 from calendar import timegm
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
 
 import feedparser
-
-from distill.intake.config import IntakeConfig
 from distill.intake.models import ContentItem, ContentSource, ContentType
 from distill.intake.parsers.base import ContentParser
 
@@ -53,12 +51,10 @@ class RSSParser(ContentParser):
 
         # Default recency filter: last 7 days
         if since is None:
-            since = datetime.now(tz=timezone.utc) - timedelta(
-                days=self._config.rss.max_age_days
-            )
+            since = datetime.now(tz=UTC) - timedelta(days=self._config.rss.max_age_days)
         elif since.tzinfo is None:
             # Ensure timezone-aware for comparison with feed dates
-            since = since.replace(tzinfo=timezone.utc)
+            since = since.replace(tzinfo=UTC)
 
         items: list[ContentItem] = []
         for url in feed_urls:
@@ -117,9 +113,7 @@ class RSSParser(ContentParser):
 
         return unique
 
-    def _parse_feed(
-        self, url: str, *, since: datetime | None = None
-    ) -> list[ContentItem]:
+    def _parse_feed(self, url: str, *, since: datetime | None = None) -> list[ContentItem]:
         """Parse a single RSS/Atom feed URL."""
         feed = feedparser.parse(url)
 
@@ -242,9 +236,7 @@ class RSSParser(ContentParser):
             time_struct = entry.get(field)
             if time_struct:
                 try:
-                    return datetime.fromtimestamp(
-                        timegm(time_struct), tz=timezone.utc
-                    )
+                    return datetime.fromtimestamp(timegm(time_struct), tz=UTC)
                 except (ValueError, OverflowError):
                     continue
         return None
@@ -258,11 +250,7 @@ class RSSParser(ContentParser):
             return []
 
         lines = feeds_path.read_text(encoding="utf-8").splitlines()
-        return [
-            line.strip()
-            for line in lines
-            if line.strip() and not line.strip().startswith("#")
-        ]
+        return [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
 
     @staticmethod
     def _read_opml(path: str) -> list[str]:
@@ -294,11 +282,35 @@ class _HTMLTextExtractor(HTMLParser):
     """Proper HTML-to-text converter using stdlib html.parser."""
 
     # Tags that should insert whitespace when stripped
-    _BLOCK_TAGS = frozenset({
-        "p", "div", "br", "hr", "li", "h1", "h2", "h3", "h4", "h5", "h6",
-        "blockquote", "pre", "tr", "td", "th", "dt", "dd", "figcaption",
-        "article", "section", "header", "footer", "nav", "aside",
-    })
+    _BLOCK_TAGS = frozenset(
+        {
+            "p",
+            "div",
+            "br",
+            "hr",
+            "li",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "blockquote",
+            "pre",
+            "tr",
+            "td",
+            "th",
+            "dt",
+            "dd",
+            "figcaption",
+            "article",
+            "section",
+            "header",
+            "footer",
+            "nav",
+            "aside",
+        }
+    )
 
     def __init__(self) -> None:
         super().__init__()

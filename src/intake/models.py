@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class ContentSource(str, Enum):
+class ContentSource(StrEnum):
     """Supported content sources."""
 
     RSS = "rss"
@@ -17,10 +17,14 @@ class ContentSource(str, Enum):
     BROWSER = "browser"
     LINKEDIN = "linkedin"
     REDDIT = "reddit"
+    YOUTUBE = "youtube"
+    TWITTER = "twitter"
+    SESSION = "session"
+    SEEDS = "seeds"
     MANUAL = "manual"
 
 
-class ContentType(str, Enum):
+class ContentType(StrEnum):
     """Content format categories."""
 
     ARTICLE = "article"

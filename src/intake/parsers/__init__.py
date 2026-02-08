@@ -28,10 +28,26 @@ def create_parser(
     if isinstance(source, str):
         source = ContentSource(source)
 
+    from distill.intake.parsers.browser import BrowserParser
+    from distill.intake.parsers.gmail import GmailParser
+    from distill.intake.parsers.linkedin import LinkedInParser
+    from distill.intake.parsers.reddit import RedditParser
     from distill.intake.parsers.rss import RSSParser
+    from distill.intake.parsers.session import SessionParser
+    from distill.intake.parsers.substack import SubstackParser
+    from distill.intake.parsers.twitter import TwitterParser
+    from distill.intake.parsers.youtube import YouTubeParser
 
     parsers: dict[ContentSource, type[ContentParser]] = {
         ContentSource.RSS: RSSParser,
+        ContentSource.BROWSER: BrowserParser,
+        ContentSource.SUBSTACK: SubstackParser,
+        ContentSource.LINKEDIN: LinkedInParser,
+        ContentSource.TWITTER: TwitterParser,
+        ContentSource.REDDIT: RedditParser,
+        ContentSource.YOUTUBE: YouTubeParser,
+        ContentSource.GMAIL: GmailParser,
+        ContentSource.SESSION: SessionParser,
     }
 
     if source in parsers:

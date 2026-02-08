@@ -7,9 +7,10 @@ Parses VerMAS (Verification Multi-Agent System) workflow state including:
 - Events logs tracking workflow progression
 """
 
+import contextlib
 import json
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -146,11 +147,17 @@ class VermasParser:
         """Return any errors encountered during parsing."""
         return self._parse_errors.copy()
 
-    def parse_directory(self, path: Path) -> list[VermasSession]:
+    def parse_directory(
+        self,
+        path: Path,
+        *,
+        since: date | None = None,
+    ) -> list[VermasSession]:
         """Parse all VerMAS workflow sessions from a directory.
 
         Args:
             path: Path to .vermas directory or parent containing .vermas
+            since: Only parse workflow dirs modified on or after this date.
 
         Returns:
             List of parsed VermasSession objects
@@ -166,7 +173,7 @@ class VermasParser:
         # Parse workflow executions from state directory
         state_dir = vermas_dir / "state"
         if state_dir.exists():
-            sessions.extend(self._parse_state_directory(state_dir, vermas_dir))
+            sessions.extend(self._parse_state_directory(state_dir, vermas_dir, since=since))
 
         return sessions
 
@@ -179,10 +186,19 @@ class VermasParser:
         return None
 
     def _parse_state_directory(
-        self, state_dir: Path, vermas_dir: Path
+        self,
+        state_dir: Path,
+        vermas_dir: Path,
+        *,
+        since: date | None = None,
     ) -> list[VermasSession]:
         """Parse all workflow executions from the state directory."""
         sessions: list[VermasSession] = []
+
+        # Pre-compute mtime cutoff for filtering
+        since_ts = (
+            datetime.combine(since, datetime.min.time()).timestamp() if since is not None else None
+        )
 
         for workflow_dir in state_dir.iterdir():
             if not workflow_dir.is_dir():
@@ -190,6 +206,10 @@ class VermasParser:
 
             # Skip meeting directories (mtg-*)
             if workflow_dir.name.startswith("mtg-"):
+                continue
+
+            # Skip directories older than the cutoff
+            if since_ts is not None and workflow_dir.stat().st_mtime < since_ts:
                 continue
 
             try:
@@ -234,9 +254,7 @@ class VermasParser:
         mission_info = self._get_mission_info(vermas_dir, mission_id)
 
         # Get task description with fallback chain
-        task_description = self._get_task_description(
-            vermas_dir, mission_id, task_name
-        )
+        task_description = self._get_task_description(vermas_dir, mission_id, task_name)
         if not task_description and mission_info and mission_info.description:
             task_description = mission_info.description
         if not task_description and task_name:
@@ -274,9 +292,7 @@ class VermasParser:
             quality_rating=quality_rating,
         )
 
-    def _parse_workflow_id(
-        self, workflow_id: str
-    ) -> tuple[str | None, int | None, str | None]:
+    def _parse_workflow_id(self, workflow_id: str) -> tuple[str | None, int | None, str | None]:
         """Parse workflow ID into components.
 
         Format: mission-XXX-cycle-N-execute-task-name
@@ -297,10 +313,8 @@ class VermasParser:
         # Find cycle number (after "cycle-")
         for i, part in enumerate(parts):
             if part == "cycle" and i + 1 < len(parts):
-                try:
+                with contextlib.suppress(ValueError):
                     cycle = int(parts[i + 1])
-                except ValueError:
-                    pass
                 break
 
         # Find task name (after "execute-")
@@ -436,9 +450,7 @@ class VermasParser:
 
         return "in_progress"
 
-    def _determine_quality_rating(
-        self, outcome: str, signals: list[AgentSignal]
-    ) -> str:
+    def _determine_quality_rating(self, outcome: str, signals: list[AgentSignal]) -> str:
         """Determine quality rating from outcome and signals.
 
         Ratings: excellent, good, fair, poor, unknown.
@@ -526,7 +538,7 @@ class VermasParser:
         if not signals:
             return f"Task: {task_name or 'unknown'} - No signals recorded"
 
-        roles_involved = list(set(s.role for s in signals))
+        roles_involved = list({s.role for s in signals})
 
         summary_parts = [f"Task: {task_name or 'unknown'}"]
         summary_parts.append(f"Outcome: {outcome}")
@@ -540,9 +552,7 @@ class VermasParser:
 
         return " | ".join(summary_parts)
 
-    def _get_mission_info(
-        self, vermas_dir: Path, mission_id: str | None
-    ) -> MissionInfo | None:
+    def _get_mission_info(self, vermas_dir: Path, mission_id: str | None) -> MissionInfo | None:
         """Parse mission info from _epic.md file."""
         if not mission_id:
             return None
@@ -807,9 +817,7 @@ class VermasParser:
             if workflow_dir.name.startswith("mtg-"):
                 continue
 
-            wf_mission_id, cycle, task_name = self._parse_workflow_id(
-                workflow_dir.name
-            )
+            wf_mission_id, cycle, task_name = self._parse_workflow_id(workflow_dir.name)
 
             if mission_id and wf_mission_id != mission_id:
                 continue

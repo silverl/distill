@@ -220,7 +220,7 @@ def _parse_single_file(path: Path, source_filter: list[str] | None) -> list[Base
             return parse_session_file(path, src)
     except Exception as exc:
         console.print(f"[red]Error:[/red] Failed to parse {path}: {exc}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 def _discover_and_parse(
@@ -257,21 +257,18 @@ def _discover_and_parse(
     parse_errors: list[str] = []
 
     with _progress_context(quiet=stats_only) as progress:
-        if progress:
-            task = progress.add_task("Parsing sessions...", total=total_files)
-        else:
-            task = None
+        task = progress.add_task("Parsing sessions...", total=total_files) if progress else None
 
         for src, files in discovered.items():
             for file_path in files:
                 try:
-                    sessions = parse_session_file(file_path, src)
+                    sessions = parse_session_file(file_path, src, since=since_date)
                 except Exception as exc:
                     parse_errors.append(f"{file_path}: {exc}")
                     if progress and task is not None:
                         progress.advance(task)
                     continue
-                # Filter by date if specified
+                # Filter by date if specified (belt-and-suspenders with mtime pre-filter)
                 if since_date:
                     sessions = [s for s in sessions if s.start_time.date() >= since_date]
                 all_sessions.extend(sessions)
@@ -379,7 +376,7 @@ def analyze_cmd(
         except ValueError:
             console.print(f"[red]Error:[/red] Invalid date format: {since}")
             console.print("Use YYYY-MM-DD format (e.g., 2024-01-15)")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     # If a file was passed directly, infer the source and parse it
     if directory.is_file():
@@ -712,7 +709,7 @@ def journal_cmd(
         except ValueError:
             console.print(f"[red]Error:[/red] Invalid date format: {target_date}")
             console.print("Use YYYY-MM-DD format (e.g., 2026-02-05)")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     if since:
         try:
@@ -720,7 +717,7 @@ def journal_cmd(
         except ValueError:
             console.print(f"[red]Error:[/red] Invalid date format: {since}")
             console.print("Use YYYY-MM-DD format (e.g., 2026-02-05)")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     # Default to today if no date specified
     if parsed_target_date is None and since_date is None:
@@ -976,7 +973,11 @@ def intake_cmd(
         typer.Option(
             "--sources",
             "-s",
-            help="Comma-separated sources to ingest (rss). Default: rss.",
+            help=(
+                "Comma-separated sources"
+                " (rss,browser,substack,linkedin,twitter,reddit,youtube,gmail)."
+                " Default: all configured."
+            ),
         ),
     ] = None,
     feeds_file: Annotated[
@@ -1025,7 +1026,11 @@ def intake_cmd(
         str | None,
         typer.Option(
             "--publish",
-            help="Comma-separated publishers (obsidian, markdown). Default: obsidian.",
+            help=(
+                "Comma-separated publishers"
+                " (obsidian, markdown, ghost, twitter, linkedin, reddit)."
+                " Default: obsidian."
+            ),
         ),
     ] = None,
     use_defaults: Annotated[
@@ -1033,6 +1038,97 @@ def intake_cmd(
         typer.Option(
             "--use-defaults",
             help="Use built-in default RSS feeds (90+ tech/engineering blogs).",
+        ),
+    ] = False,
+    ghost_url: Annotated[
+        str | None,
+        typer.Option(
+            "--ghost-url",
+            help="Ghost instance URL (or GHOST_URL env var).",
+        ),
+    ] = None,
+    ghost_key: Annotated[
+        str | None,
+        typer.Option(
+            "--ghost-key",
+            help="Ghost Admin API key as id:secret (or GHOST_ADMIN_API_KEY env var).",
+        ),
+    ] = None,
+    ghost_newsletter: Annotated[
+        str | None,
+        typer.Option(
+            "--ghost-newsletter",
+            help="Newsletter slug for auto-send (or GHOST_NEWSLETTER_SLUG env var).",
+        ),
+    ] = None,
+    browser_history: Annotated[
+        bool,
+        typer.Option(
+            "--browser-history",
+            help="Include browser history (Chrome/Safari) in ingestion.",
+        ),
+    ] = False,
+    substack_blogs: Annotated[
+        str | None,
+        typer.Option(
+            "--substack-blogs",
+            help="Comma-separated Substack blog URLs to ingest.",
+        ),
+    ] = None,
+    twitter_export: Annotated[
+        str | None,
+        typer.Option(
+            "--twitter-export",
+            help="Path to X/Twitter data export directory.",
+        ),
+    ] = None,
+    linkedin_export: Annotated[
+        str | None,
+        typer.Option(
+            "--linkedin-export",
+            help="Path to LinkedIn GDPR data export directory.",
+        ),
+    ] = None,
+    reddit_user: Annotated[
+        str | None,
+        typer.Option(
+            "--reddit-user",
+            help="Reddit username (also reads REDDIT_USERNAME env var).",
+        ),
+    ] = None,
+    youtube_api_key: Annotated[
+        str | None,
+        typer.Option(
+            "--youtube-api-key",
+            help="YouTube Data API key (also reads YOUTUBE_API_KEY env var).",
+        ),
+    ] = None,
+    gmail_credentials: Annotated[
+        str | None,
+        typer.Option(
+            "--gmail-credentials",
+            help="Path to Google OAuth credentials.json for Gmail access.",
+        ),
+    ] = None,
+    include_sessions: Annotated[
+        bool,
+        typer.Option(
+            "--include-sessions/--no-sessions",
+            help="Include coding sessions (Claude/Codex) as content source.",
+        ),
+    ] = False,
+    session_dirs: Annotated[
+        str | None,
+        typer.Option(
+            "--session-dirs",
+            help="Comma-separated directories to scan for sessions.",
+        ),
+    ] = None,
+    global_sessions: Annotated[
+        bool,
+        typer.Option(
+            "--global-sessions",
+            help="Also scan home directory for sessions.",
         ),
     ] = False,
 ) -> None:
@@ -1043,6 +1139,7 @@ def intake_cmd(
 
     Use --feeds-file or --opml to provide your own feed list.
     Use --use-defaults to start with 90+ curated tech/engineering feeds.
+    Use --browser-history to include Chrome/Safari browsing history.
     Use --dry-run to preview fetched content without calling the LLM.
     """
     # Resolve sources
@@ -1051,11 +1148,21 @@ def intake_cmd(
     # Resolve publishers
     publisher_list = [p.strip() for p in publish.split(",")] if publish else None
 
+    # Build Ghost config from CLI options / env vars
+    from distill.blog.config import GhostConfig
+
+    gc = GhostConfig.from_env()
+    if ghost_url:
+        gc.url = ghost_url
+    if ghost_key:
+        gc.admin_api_key = ghost_key
+    if ghost_newsletter:
+        gc.newsletter_slug = ghost_newsletter
+    intake_ghost_config = gc if gc.is_configured else None
+
     # Resolve feeds file — use built-in defaults if requested
     resolved_feeds_file = feeds_file
     if use_defaults and not feeds_file and not opml:
-        import importlib.resources
-
         default_path = Path(__file__).parent / "intake" / "default_feeds.txt"
         if default_path.exists():
             resolved_feeds_file = str(default_path)
@@ -1064,6 +1171,16 @@ def intake_cmd(
     with _progress_context(quiet=dry_run) as progress:
         if progress:
             progress.add_task("Ingesting content...", total=None)
+
+        # Parse substack blogs
+        substack_blog_list = (
+            [u.strip() for u in substack_blogs.split(",") if u.strip()] if substack_blogs else None
+        )
+
+        # Parse session dirs
+        session_dir_list = (
+            [d.strip() for d in session_dirs.split(",") if d.strip()] if session_dirs else None
+        )
 
         written = generate_intake(
             output,
@@ -1075,6 +1192,17 @@ def intake_cmd(
             model=model,
             target_word_count=words,
             publishers=publisher_list,
+            ghost_config=intake_ghost_config,
+            browser_history=browser_history,
+            substack_blogs=substack_blog_list,
+            twitter_export=twitter_export,
+            linkedin_export=linkedin_export,
+            reddit_user=reddit_user,
+            youtube_api_key=youtube_api_key,
+            gmail_credentials=gmail_credentials,
+            include_sessions=include_sessions,
+            session_dirs=session_dir_list,
+            global_sessions=global_sessions,
         )
 
     if dry_run:
@@ -1089,6 +1217,328 @@ def intake_cmd(
     console.print(f"[bold green]Generated {len(written)} intake digest(s):[/bold green]")
     for path in written:
         console.print(f"  {path}")
+
+
+@app.command(name="run")
+def run_cmd(
+    directory: Annotated[
+        Path,
+        typer.Option(
+            "--dir",
+            "-d",
+            help="Directory to scan for session data.",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ] = Path("."),
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output directory for all generated content.",
+        ),
+    ] = Path("./insights"),
+    include_global: Annotated[
+        bool,
+        typer.Option(
+            "--global/--no-global",
+            help="Also scan home directory for sessions.",
+        ),
+    ] = False,
+    use_defaults: Annotated[
+        bool,
+        typer.Option(
+            "--use-defaults",
+            help="Use built-in default RSS feeds for intake.",
+        ),
+    ] = True,
+    publish: Annotated[
+        str | None,
+        typer.Option(
+            "--publish",
+            help="Comma-separated platforms (obsidian,ghost,markdown). Default: obsidian.",
+        ),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help="Preview all steps without calling LLM.",
+        ),
+    ] = False,
+    skip_sessions: Annotated[
+        bool,
+        typer.Option(
+            "--skip-sessions",
+            help="Skip session parsing and journal generation.",
+        ),
+    ] = False,
+    skip_intake: Annotated[
+        bool,
+        typer.Option(
+            "--skip-intake",
+            help="Skip content ingestion.",
+        ),
+    ] = False,
+    skip_blog: Annotated[
+        bool,
+        typer.Option(
+            "--skip-blog",
+            help="Skip blog post generation.",
+        ),
+    ] = False,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            help="Override the Claude model.",
+        ),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Regenerate everything, ignoring caches.",
+        ),
+    ] = False,
+    since: Annotated[
+        str | None,
+        typer.Option(
+            "--since",
+            help="Only process sessions since this date (YYYY-MM-DD). Default: 2 days ago.",
+        ),
+    ] = None,
+    ghost_url: Annotated[
+        str | None,
+        typer.Option("--ghost-url", help="Ghost instance URL."),
+    ] = None,
+    ghost_key: Annotated[
+        str | None,
+        typer.Option("--ghost-key", help="Ghost Admin API key as id:secret."),
+    ] = None,
+) -> None:
+    """Run the full distill pipeline: sessions -> journal -> intake -> blog -> publish.
+
+    This is the single command that orchestrates everything. Ideal for
+    daily scheduled runs (e.g., via launchd/cron).
+
+    Only processes the delta: sessions from the last 2 days (or --since),
+    new intake items since last run, and any un-generated blog posts.
+    Memory and state files provide continuity across runs.
+    """
+    from datetime import timedelta
+
+    platform_names = [p.strip() for p in publish.split(",")] if publish else ["obsidian"]
+
+    # Build Ghost config
+    from distill.blog.config import GhostConfig
+
+    gc = GhostConfig.from_env()
+    if ghost_url:
+        gc.url = ghost_url
+    if ghost_key:
+        gc.admin_api_key = ghost_key
+    ghost_cfg = gc if gc.is_configured else None
+
+    all_written: list[Path] = []
+    errors: list[str] = []
+
+    # Delta window: only parse sessions from the --since date or last 2 days
+    if force:
+        delta_since = None
+        target_dates = None
+    elif since:
+        try:
+            delta_since = datetime.strptime(since, "%Y-%m-%d").date()
+        except ValueError:
+            console.print(f"[red]Error:[/red] Invalid date format: {since}")
+            console.print("Use YYYY-MM-DD format (e.g., 2026-02-07)")
+            raise typer.Exit(1) from None
+        # Generate journal for all dates in the range
+        target_dates = None
+    else:
+        delta_since = date.today() - timedelta(days=2)
+        target_dates = [date.today()]
+
+    # Step 1: Discover and parse sessions -> journal
+    if not skip_sessions:
+        console.print("[bold]Step 1/3: Sessions → Journal[/bold]")
+        try:
+            all_sessions = _discover_and_parse(
+                directory,
+                None,
+                include_global,
+                since_date=delta_since,
+                stats_only=False,
+            )
+            if all_sessions:
+                console.print(f"  Found {len(all_sessions)} session(s)")
+                written = generate_journal_notes(
+                    all_sessions,
+                    output,
+                    target_dates=target_dates,
+                    force=force,
+                    dry_run=dry_run,
+                    model=model,
+                )
+                all_written.extend(written)
+                console.print(f"  [green]Generated {len(written)} journal entry/entries[/green]")
+            else:
+                console.print("  [yellow]No sessions found[/yellow]")
+        except Exception as exc:
+            errors.append(f"Sessions/journal: {exc}")
+            console.print(f"  [red]Error: {exc}[/red]")
+    else:
+        console.print("[dim]Step 1/3: Sessions → Journal (skipped)[/dim]")
+
+    # Step 2: Intake — ingest external content
+    if not skip_intake:
+        console.print("[bold]Step 2/3: Intake → Digest[/bold]")
+        try:
+            # Resolve feeds file for defaults
+            resolved_feeds_file: str | None = None
+            if use_defaults:
+                default_path = Path(__file__).parent / "intake" / "default_feeds.txt"
+                if default_path.exists():
+                    resolved_feeds_file = str(default_path)
+
+            written = generate_intake(
+                output,
+                feeds_file=resolved_feeds_file,
+                force=force,
+                dry_run=dry_run,
+                model=model,
+                publishers=platform_names,
+                ghost_config=ghost_cfg,
+                include_sessions=not skip_sessions,
+                session_dirs=[str(directory)],
+                global_sessions=include_global,
+            )
+            all_written.extend(written)
+            console.print(f"  [green]Generated {len(written)} intake output(s)[/green]")
+        except Exception as exc:
+            errors.append(f"Intake: {exc}")
+            console.print(f"  [red]Error: {exc}[/red]")
+    else:
+        console.print("[dim]Step 2/3: Intake → Digest (skipped)[/dim]")
+
+    # Step 3: Blog — generate posts from journal + intake
+    if not skip_blog:
+        console.print("[bold]Step 3/3: Blog → Publish[/bold]")
+        journal_dir = output / "journal"
+        if journal_dir.exists():
+            try:
+                written = generate_blog_posts(
+                    output,
+                    force=force,
+                    dry_run=dry_run,
+                    model=model,
+                    platforms=platform_names,
+                    ghost_config=ghost_cfg,
+                )
+                all_written.extend(written)
+                console.print(f"  [green]Generated {len(written)} blog post(s)[/green]")
+            except Exception as exc:
+                errors.append(f"Blog: {exc}")
+                console.print(f"  [red]Error: {exc}[/red]")
+        else:
+            console.print("  [yellow]No journal entries yet — skipping blog[/yellow]")
+    else:
+        console.print("[dim]Step 3/3: Blog → Publish (skipped)[/dim]")
+
+    # Update unified memory
+    if not dry_run:
+        try:
+            from distill.memory import load_unified_memory, save_unified_memory
+
+            memory = load_unified_memory(output)
+            memory.prune(keep_days=30)
+            save_unified_memory(memory, output)
+        except Exception:
+            pass
+
+    # Summary
+    console.print()
+    if errors:
+        console.print(f"[bold yellow]Pipeline completed with {len(errors)} error(s)[/bold yellow]")
+        for err in errors:
+            console.print(f"  [red]- {err}[/red]")
+    else:
+        console.print("[bold green]Pipeline complete![/bold green]")
+    console.print(f"  Total outputs: {len(all_written)}")
+    console.print(f"  Output directory: {output}")
+
+
+@app.command(name="seed")
+def seed_add(
+    text: Annotated[
+        str,
+        typer.Argument(help="Your thought, headline, or topic idea."),
+    ],
+    tags: Annotated[
+        str,
+        typer.Option(
+            "--tags",
+            help="Comma-separated tags.",
+        ),
+    ] = "",
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output directory (where seeds are stored).",
+        ),
+    ] = Path("./insights"),
+) -> None:
+    """Add a seed idea — a raw thought or headline for your next digest."""
+    from distill.intake.seeds import SeedStore
+
+    store = SeedStore(output)
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    seed = store.add(text, tags=tag_list)
+    console.print(f"[green]Seed added:[/green] {seed.text}")
+    if tag_list:
+        console.print(f"  Tags: {', '.join(tag_list)}")
+    console.print(f"  ID: {seed.id}")
+
+
+@app.command(name="seeds")
+def seed_list(
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output directory (where seeds are stored).",
+        ),
+    ] = Path("./insights"),
+    show_all: Annotated[
+        bool,
+        typer.Option(
+            "--all",
+            help="Show all seeds, including used ones.",
+        ),
+    ] = False,
+) -> None:
+    """List your pending seed ideas."""
+    from distill.intake.seeds import SeedStore
+
+    store = SeedStore(output)
+    seeds = store.list_all() if show_all else store.list_unused()
+
+    if not seeds:
+        console.print("[yellow]No seeds found.[/yellow]")
+        return
+
+    for seed in seeds:
+        status = "[dim](used)[/dim] " if seed.used else ""
+        tag_str = f" [dim][{', '.join(seed.tags)}][/dim]" if seed.tags else ""
+        console.print(f"  {status}{seed.text}{tag_str}")
+        console.print(f"    [dim]ID: {seed.id} | {seed.created_at.date()}[/dim]")
 
 
 if __name__ == "__main__":

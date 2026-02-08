@@ -17,27 +17,184 @@ from pydantic import BaseModel, Field
 # ── stopwords ────────────────────────────────────────────────────────
 
 _STOPWORDS: set[str] = {
-    "a", "about", "above", "after", "again", "against", "all", "am", "an",
-    "and", "any", "are", "aren", "as", "at", "be", "because", "been",
-    "before", "being", "below", "between", "both", "but", "by", "can",
-    "could", "d", "did", "didn", "do", "does", "doesn", "doing", "don",
-    "down", "during", "each", "few", "for", "from", "further", "get",
-    "got", "had", "has", "hasn", "have", "haven", "having", "he", "her",
-    "here", "hers", "herself", "him", "himself", "his", "how", "i", "if",
-    "in", "into", "is", "isn", "it", "its", "itself", "just", "ll", "m",
-    "me", "might", "more", "most", "my", "myself", "need", "no", "nor",
-    "not", "now", "o", "of", "off", "on", "once", "only", "or", "other",
-    "our", "ours", "ourselves", "out", "over", "own", "re", "s", "same",
-    "she", "should", "shouldn", "so", "some", "such", "t", "than", "that",
-    "the", "their", "theirs", "them", "themselves", "then", "there",
-    "these", "they", "this", "those", "through", "to", "too", "under",
-    "until", "up", "ve", "very", "was", "wasn", "we", "were", "weren",
-    "what", "when", "where", "which", "while", "who", "whom", "why",
-    "will", "with", "won", "would", "wouldn", "you", "your", "yours",
-    "yourself", "yourselves", "also", "new", "one", "two", "use", "used",
-    "using", "like", "make", "many", "much", "well", "way", "even",
-    "still", "may", "take", "come", "see", "know", "want", "look",
-    "first", "go", "back", "think", "say", "said",
+    "a",
+    "about",
+    "above",
+    "after",
+    "again",
+    "against",
+    "all",
+    "am",
+    "an",
+    "and",
+    "any",
+    "are",
+    "aren",
+    "as",
+    "at",
+    "be",
+    "because",
+    "been",
+    "before",
+    "being",
+    "below",
+    "between",
+    "both",
+    "but",
+    "by",
+    "can",
+    "could",
+    "d",
+    "did",
+    "didn",
+    "do",
+    "does",
+    "doesn",
+    "doing",
+    "don",
+    "down",
+    "during",
+    "each",
+    "few",
+    "for",
+    "from",
+    "further",
+    "get",
+    "got",
+    "had",
+    "has",
+    "hasn",
+    "have",
+    "haven",
+    "having",
+    "he",
+    "her",
+    "here",
+    "hers",
+    "herself",
+    "him",
+    "himself",
+    "his",
+    "how",
+    "i",
+    "if",
+    "in",
+    "into",
+    "is",
+    "isn",
+    "it",
+    "its",
+    "itself",
+    "just",
+    "ll",
+    "m",
+    "me",
+    "might",
+    "more",
+    "most",
+    "my",
+    "myself",
+    "need",
+    "no",
+    "nor",
+    "not",
+    "now",
+    "o",
+    "of",
+    "off",
+    "on",
+    "once",
+    "only",
+    "or",
+    "other",
+    "our",
+    "ours",
+    "ourselves",
+    "out",
+    "over",
+    "own",
+    "re",
+    "s",
+    "same",
+    "she",
+    "should",
+    "shouldn",
+    "so",
+    "some",
+    "such",
+    "t",
+    "than",
+    "that",
+    "the",
+    "their",
+    "theirs",
+    "them",
+    "themselves",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "to",
+    "too",
+    "under",
+    "until",
+    "up",
+    "ve",
+    "very",
+    "was",
+    "wasn",
+    "we",
+    "were",
+    "weren",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "who",
+    "whom",
+    "why",
+    "will",
+    "with",
+    "won",
+    "would",
+    "wouldn",
+    "you",
+    "your",
+    "yours",
+    "yourself",
+    "yourselves",
+    "also",
+    "new",
+    "one",
+    "two",
+    "use",
+    "used",
+    "using",
+    "like",
+    "make",
+    "many",
+    "much",
+    "well",
+    "way",
+    "even",
+    "still",
+    "may",
+    "take",
+    "come",
+    "see",
+    "know",
+    "want",
+    "look",
+    "first",
+    "go",
+    "back",
+    "think",
+    "say",
+    "said",
 }
 
 # Characters to strip from tokens (everything that isn't a letter or digit).
@@ -45,6 +202,7 @@ _STRIP_TABLE = str.maketrans("", "", string.punctuation + "\u2019\u2018\u201c\u2
 
 
 # ── models ───────────────────────────────────────────────────────────
+
 
 class TopicCluster(BaseModel):
     """A group of content items sharing a common topic."""
@@ -55,6 +213,7 @@ class TopicCluster(BaseModel):
 
 
 # ── tokenisation helpers ─────────────────────────────────────────────
+
 
 def _tokenize(text: str) -> list[str]:
     """Lowercase, strip punctuation, remove stopwords."""
@@ -81,6 +240,7 @@ def _item_text(item: ContentItem) -> str:
 
 
 # ── TF-IDF ───────────────────────────────────────────────────────────
+
 
 def _build_tfidf(
     docs: list[list[str]],
@@ -145,9 +305,8 @@ def _cosine_similarity(a: dict[str, float], b: dict[str, float]) -> float:
 
 # ── clustering ───────────────────────────────────────────────────────
 
-def _merge_vectors(
-    va: dict[str, float], vb: dict[str, float]
-) -> dict[str, float]:
+
+def _merge_vectors(va: dict[str, float], vb: dict[str, float]) -> dict[str, float]:
     """Average two sparse vectors (used after merging clusters)."""
     merged: dict[str, float] = dict(va)
     for term, w in vb.items():
@@ -161,10 +320,7 @@ def _merge_vectors(
 
 def _top_keywords(vector: dict[str, float], n: int = 5) -> list[str]:
     """Return the top-n terms by weight from a sparse vector."""
-    return [
-        term
-        for term, _ in sorted(vector.items(), key=lambda kv: kv[1], reverse=True)[:n]
-    ]
+    return [term for term, _ in sorted(vector.items(), key=lambda kv: kv[1], reverse=True)[:n]]
 
 
 def _make_label(keywords: list[str]) -> str:
@@ -239,9 +395,7 @@ def cluster_items(
 
         # Merge j into i
         cluster_indices[best_i].extend(cluster_indices[best_j])
-        cluster_vectors[best_i] = _merge_vectors(
-            cluster_vectors[best_i], cluster_vectors[best_j]
-        )
+        cluster_vectors[best_i] = _merge_vectors(cluster_vectors[best_i], cluster_vectors[best_j])
 
         # Remove j
         cluster_indices.pop(best_j)
@@ -282,6 +436,7 @@ def cluster_items(
 
 
 # ── rendering ────────────────────────────────────────────────────────
+
 
 def render_clustered_context(
     clusters: list[TopicCluster],

@@ -122,7 +122,9 @@ def build_daily_index(
             if item.tags:
                 lines.append(f"Tags: {', '.join(item.tags[:8])}")
 
-            excerpt = item.excerpt or (item.body[:300] + "..." if item.body and len(item.body) > 300 else item.body)
+            excerpt = item.excerpt or (
+                item.body[:300] + "..." if item.body and len(item.body) > 300 else item.body
+            )
             if excerpt:
                 lines.append("")
                 lines.append(f"> {excerpt.strip()[:500]}")

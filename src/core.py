@@ -1,14 +1,15 @@
 """Core analysis pipeline for session insights."""
 
+from __future__ import annotations
+
 import logging
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
-
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from distill.blog.config import GhostConfig
 
 from distill.formatters.project import (
     ProjectFormatter,
@@ -20,6 +21,9 @@ from distill.formatters.weekly import (
 )
 from distill.parsers import ClaudeParser, CodexParser, VermasParser
 from distill.parsers.models import BaseSession
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 class SessionStats(BaseModel):
@@ -123,7 +127,12 @@ def discover_sessions(
     return result
 
 
-def parse_sessions(root: Path, source: str) -> list[BaseSession]:
+def parse_sessions(
+    root: Path,
+    source: str,
+    *,
+    since: date | None = None,
+) -> list[BaseSession]:
     """Parse sessions from a source root directory.
 
     Dispatches to the appropriate parser based on source type.
@@ -131,6 +140,7 @@ def parse_sessions(root: Path, source: str) -> list[BaseSession]:
     Args:
         root: Root directory for the source (e.g., .claude, .codex, .vermas).
         source: The source type (claude, codex, vermas).
+        since: Only parse files modified on or after this date (uses mtime).
 
     Returns:
         List of parsed sessions.
@@ -140,13 +150,13 @@ def parse_sessions(root: Path, source: str) -> list[BaseSession]:
     sessions: list[BaseSession] = []
     if source == "claude":
         parser = ClaudeParser()
-        sessions = list(parser.parse_directory(root))
+        sessions = list(parser.parse_directory(root, since=since))
     elif source == "codex":
         parser = CodexParser()
-        sessions = list(parser.parse_directory(root))
+        sessions = list(parser.parse_directory(root, since=since))
     elif source == "vermas":
         parser = VermasParser()
-        sessions = list(parser.parse_directory(root))
+        sessions = list(parser.parse_directory(root, since=since))
 
     # Enrich narratives for all sessions
     for session in sessions:
@@ -155,7 +165,12 @@ def parse_sessions(root: Path, source: str) -> list[BaseSession]:
     return sessions
 
 
-def parse_session_file(path: Path, source: str) -> list[BaseSession]:
+def parse_session_file(
+    path: Path,
+    source: str,
+    *,
+    since: date | None = None,
+) -> list[BaseSession]:
     """Parse sessions from a path.
 
     This is a compatibility wrapper. For source directories, it dispatches
@@ -164,13 +179,14 @@ def parse_session_file(path: Path, source: str) -> list[BaseSession]:
     Args:
         path: Path to a source directory or file.
         source: The source type (claude, codex, vermas).
+        since: Only parse files modified on or after this date (uses mtime).
 
     Returns:
         List of parsed sessions.
     """
     # If path is a directory, use the new parser-based approach
     if path.is_dir():
-        return parse_sessions(path, source)
+        return parse_sessions(path, source, since=since)
 
     # For files, try to find the parent source directory
     # and use the appropriate parser
@@ -179,15 +195,27 @@ def parse_session_file(path: Path, source: str) -> list[BaseSession]:
         # Walk up to find .claude directory
         for p in [parent] + list(parent.parents):
             if p.name == ".claude" or (p / ".claude").exists():
-                return parse_sessions(p if p.name == ".claude" else p / ".claude", source)
+                return parse_sessions(
+                    p if p.name == ".claude" else p / ".claude",
+                    source,
+                    since=since,
+                )
     elif source == "codex":
         for p in [parent] + list(parent.parents):
             if p.name == ".codex" or (p / ".codex").exists():
-                return parse_sessions(p if p.name == ".codex" else p / ".codex", source)
+                return parse_sessions(
+                    p if p.name == ".codex" else p / ".codex",
+                    source,
+                    since=since,
+                )
     elif source == "vermas":
         for p in [parent] + list(parent.parents):
             if p.name == ".vermas" or (p / ".vermas").exists():
-                return parse_sessions(p if p.name == ".vermas" else p / ".vermas", source)
+                return parse_sessions(
+                    p if p.name == ".vermas" else p / ".vermas",
+                    source,
+                    since=since,
+                )
 
     return []
 
@@ -611,6 +639,10 @@ def generate_blog_posts(
     if not entries:
         return []
 
+    # 1b. Read intake digests for context enrichment
+    intake_dir = output_dir / "intake"
+    intake_digests = reader.read_intake_digests(intake_dir)
+
     # 2. Load working memory, blog state, and blog memory
     memory = load_memory(output_dir)
     state = load_blog_state(output_dir) if not force else BlogState()
@@ -634,6 +666,7 @@ def generate_blog_posts(
                 platforms=platforms,
                 blog_memory=blog_memory,
                 ghost_config=ghost_config,
+                intake_digests=intake_digests,
             )
         )
 
@@ -653,6 +686,7 @@ def generate_blog_posts(
                 platforms=platforms,
                 blog_memory=blog_memory,
                 ghost_config=ghost_config,
+                intake_digests=intake_digests,
             )
         )
 
@@ -664,9 +698,7 @@ def generate_blog_posts(
         for platform_name in platforms:
             try:
                 p = Platform(platform_name)
-                publisher = create_publisher(
-                    p, synthesizer=synthesizer, ghost_config=ghost_config
-                )
+                publisher = create_publisher(p, synthesizer=synthesizer, ghost_config=ghost_config)
                 if not publisher.requires_llm:
                     idx_content = publisher.format_index(output_dir, state)
                     if idx_content:
@@ -693,6 +725,7 @@ def _generate_weekly_posts(
     platforms: list[str],
     blog_memory: Any,
     ghost_config: Any | None = None,
+    intake_digests: list[Any] | None = None,
 ) -> list[Path]:
     """Generate weekly synthesis blog posts."""
     from distill.blog.config import Platform
@@ -728,7 +761,9 @@ def _generate_weekly_posts(
         if not force and state.is_generated(slug):
             continue
 
-        context = prepare_weekly_context(week_entries, year, week, memory)
+        context = prepare_weekly_context(
+            week_entries, year, week, memory, intake_digests=intake_digests
+        )
 
         if dry_run:
             print(f"[DRY RUN] Would generate: {slug}")
@@ -754,9 +789,7 @@ def _generate_weekly_posts(
         for platform_name in platforms:
             try:
                 p = Platform(platform_name)
-                publisher = create_publisher(
-                    p, synthesizer=synthesizer, ghost_config=ghost_config
-                )
+                publisher = create_publisher(p, synthesizer=synthesizer, ghost_config=ghost_config)
                 content = publisher.format_weekly(context, prose)
                 out_path = publisher.weekly_output_path(output_dir, year, week)
                 out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -791,6 +824,17 @@ def generate_intake(
     model: str | None = None,
     target_word_count: int = 800,
     publishers: list[str] | None = None,
+    ghost_config: GhostConfig | None = None,
+    browser_history: bool = False,
+    substack_blogs: list[str] | None = None,
+    twitter_export: str | None = None,
+    linkedin_export: str | None = None,
+    reddit_user: str | None = None,
+    youtube_api_key: str | None = None,
+    gmail_credentials: str | None = None,
+    include_sessions: bool = False,
+    session_dirs: list[str] | None = None,
+    global_sessions: bool = False,
 ) -> list[Path]:
     """Ingest content from configured sources and synthesize a daily digest.
 
@@ -809,11 +853,22 @@ def generate_intake(
     Returns:
         List of written output file paths.
     """
-    from distill.intake.config import IntakeConfig, RSSConfig
+    from distill.intake.config import (
+        BrowserIntakeConfig,
+        GmailIntakeConfig,
+        IntakeConfig,
+        LinkedInIntakeConfig,
+        RedditIntakeConfig,
+        RSSConfig,
+        SessionIntakeConfig,
+        SubstackIntakeConfig,
+        TwitterIntakeConfig,
+        YouTubeIntakeConfig,
+    )
     from distill.intake.context import prepare_daily_context
     from distill.intake.memory import load_intake_memory, save_intake_memory
     from distill.intake.models import ContentItem, ContentSource
-    from distill.intake.parsers import create_parser
+    from distill.intake.parsers import create_parser, get_configured_parsers
     from distill.intake.publishers import create_intake_publisher
     from distill.intake.state import (
         IntakeRecord,
@@ -826,23 +881,52 @@ def generate_intake(
     if publishers is None:
         publishers = ["obsidian"]
 
-    # Build config
+    # Build config with all source-specific settings
     rss_config = RSSConfig(
         feeds=feed_urls or [],
         feeds_file=feeds_file or "",
         opml_file=opml_file or "",
     )
+    browser_config = BrowserIntakeConfig() if browser_history else BrowserIntakeConfig(browsers=[])
+    substack_config = SubstackIntakeConfig(blog_urls=substack_blogs or [])
+    twitter_config = TwitterIntakeConfig(export_path=twitter_export or "")
+    linkedin_config = LinkedInIntakeConfig(export_path=linkedin_export or "")
+    reddit_config = RedditIntakeConfig.from_env()
+    if reddit_user:
+        reddit_config.username = reddit_user
+    youtube_config = YouTubeIntakeConfig.from_env()
+    if youtube_api_key:
+        youtube_config.api_key = youtube_api_key
+    gmail_config = GmailIntakeConfig(credentials_file=gmail_credentials or "")
+    session_config = SessionIntakeConfig(
+        session_dirs=session_dirs or [],
+        include_global=global_sessions,
+    )
+    if not include_sessions:
+        # Disable session parsing by clearing sources
+        session_config = SessionIntakeConfig(sources=[])
+
     config = IntakeConfig(
         rss=rss_config,
+        browser=browser_config,
+        substack=substack_config,
+        twitter=twitter_config,
+        linkedin=linkedin_config,
+        reddit=reddit_config,
+        youtube=youtube_config,
+        gmail=gmail_config,
+        session=session_config,
         model=model,
         target_word_count=target_word_count,
     )
 
     # Determine which sources to run
-    if sources is None:
-        source_list = [ContentSource.RSS]
-    else:
+    if sources is not None:
         source_list = [ContentSource(s) for s in sources]
+    else:
+        # Auto-detect all configured sources
+        configured = get_configured_parsers(config)
+        source_list = [p.source for p in configured] if configured else [ContentSource.RSS]
 
     # Load state
     state = load_intake_state(output_dir) if not force else IntakeState()
@@ -860,7 +944,7 @@ def generate_intake(
             continue
 
         # When forcing, use epoch to bypass recency filter entirely
-        since = state.last_run if not force else datetime(2000, 1, 1, tzinfo=timezone.utc)
+        since = state.last_run if not force else datetime(2000, 1, 1, tzinfo=UTC)
         items = parser.parse(since=since)
         # Filter already-processed items
         new_items = [i for i in items if not state.is_processed(i.id)]
@@ -880,6 +964,41 @@ def generate_intake(
 
     enrich_tags(all_items)
     logger.info("Auto-tagging complete")
+
+    # Intelligence: entity extraction + classification (LLM-based)
+    from distill.intake.intelligence import classify_items, extract_entities
+
+    extract_entities(all_items, model=model)
+    logger.info("Entity extraction complete")
+
+    classify_items(all_items, model=model)
+    logger.info("Classification complete")
+
+    # Embed and store items for similarity search (optional)
+    from distill.embeddings import is_available as embeddings_available
+    from distill.store import create_store
+
+    if embeddings_available():
+        try:
+            from distill.embeddings import embed_items as _embed_items
+
+            store = create_store(fallback_dir=output_dir)
+            embedded = _embed_items(all_items)
+            store.upsert_many(embedded)
+            logger.info("Embedded and stored %d items", len(embedded))
+        except Exception:
+            logger.warning("Content store update failed, continuing", exc_info=True)
+    else:
+        logger.debug("Embeddings not available, skipping content store")
+
+    # Load seed ideas and merge into items
+    from distill.intake.seeds import SeedStore
+
+    seed_store = SeedStore(output_dir)
+    seed_items = seed_store.to_content_items()
+    if seed_items:
+        all_items.extend(seed_items)
+        logger.info("Added %d seed ideas to intake", len(seed_items))
 
     # Archive raw items after enrichment
     from distill.intake.archive import archive_items, build_daily_index
@@ -922,7 +1041,7 @@ def generate_intake(
     written: list[Path] = [archive_path, index_path]
     for pub_name in publishers:
         try:
-            publisher = create_intake_publisher(pub_name)
+            publisher = create_intake_publisher(pub_name, ghost_config=ghost_config)
             content = publisher.format_daily(context, prose)
             out_path = publisher.daily_output_path(output_dir, context.date)
             out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -941,7 +1060,7 @@ def generate_intake(
                 source=item.source.value,
             )
         )
-    state.last_run = datetime.now(tz=timezone.utc)
+    state.last_run = datetime.now(tz=UTC)
     state.prune(keep_days=30)
     save_intake_state(state, output_dir)
 
@@ -951,13 +1070,19 @@ def generate_intake(
     memory.add_entry(
         DailyIntakeEntry(
             date=context.date,
-            themes=[t for t in context.all_tags[:5]],
+            themes=list(context.all_tags[:5]),
             key_items=[i.title for i in all_items[:10] if i.title],
             item_count=len(all_items),
         )
     )
     memory.prune(keep_days=30)
     save_intake_memory(memory, output_dir)
+
+    # Mark consumed seeds as used
+    for seed_item in seed_items:
+        seed_id = seed_item.metadata.get("seed_id")
+        if isinstance(seed_id, str):
+            seed_store.mark_used(seed_id, f"intake-{context.date.isoformat()}")
 
     return written
 
@@ -976,6 +1101,7 @@ def _generate_thematic_posts(
     platforms: list[str],
     blog_memory: Any,
     ghost_config: Any | None = None,
+    intake_digests: list[Any] | None = None,
 ) -> list[Path]:
     """Generate thematic deep-dive blog posts."""
     from distill.blog.config import Platform
@@ -983,13 +1109,22 @@ def _generate_thematic_posts(
     from distill.blog.diagrams import clean_diagrams
     from distill.blog.publishers import create_publisher
     from distill.blog.state import BlogPostRecord
-    from distill.blog.themes import THEMES, gather_evidence, get_ready_themes
+    from distill.blog.themes import THEMES, gather_evidence, get_ready_themes, themes_from_seeds
+    from distill.intake.seeds import SeedStore
 
     written: list[Path] = []
 
+    # Load seed ideas and generate dynamic themes from them
+    seed_store = SeedStore(output_dir)
+    unused_seeds = seed_store.list_unused()
+    seed_themes = themes_from_seeds(unused_seeds)
+    # Map seed slug -> seed text for passing as angle
+    seed_angles: dict[str, str] = {f"seed-{s.id}": s.text for s in unused_seeds}
+
     if target_theme:
-        # Generate a specific theme
-        theme_def = next((t for t in THEMES if t.slug == target_theme), None)
+        # Generate a specific theme (check both static and seed themes)
+        all_themes = THEMES + seed_themes
+        theme_def = next((t for t in all_themes if t.slug == target_theme), None)
         if theme_def is None:
             return []
         evidence = gather_evidence(theme_def, entries)
@@ -997,14 +1132,27 @@ def _generate_thematic_posts(
             return []
         themes_to_generate = [(theme_def, evidence)]
     else:
-        # Find all ready themes
+        # Find all ready themes (static + seed-derived)
         themes_to_generate = get_ready_themes(entries, state)
+        # Also check seed themes (lower evidence bar — min_evidence_days=1)
+        for seed_theme in seed_themes:
+            if state.is_generated(seed_theme.slug):
+                continue
+            evidence = gather_evidence(seed_theme, entries)
+            if len({e.date for e in evidence}) >= seed_theme.min_evidence_days:
+                themes_to_generate.append((seed_theme, evidence))
 
     for theme, evidence in themes_to_generate:
         if not force and state.is_generated(theme.slug):
             continue
 
-        context = prepare_thematic_context(theme, evidence, memory)
+        context = prepare_thematic_context(
+            theme,
+            evidence,
+            memory,
+            intake_digests=intake_digests,
+            seed_angle=seed_angles.get(theme.slug, ""),
+        )
 
         if dry_run:
             print(f"[DRY RUN] Would generate: {theme.slug}")
@@ -1029,9 +1177,7 @@ def _generate_thematic_posts(
         for platform_name in platforms:
             try:
                 p = Platform(platform_name)
-                publisher = create_publisher(
-                    p, synthesizer=synthesizer, ghost_config=ghost_config
-                )
+                publisher = create_publisher(p, synthesizer=synthesizer, ghost_config=ghost_config)
                 content = publisher.format_thematic(context, prose)
                 out_path = publisher.thematic_output_path(output_dir, theme.slug)
                 out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1052,5 +1198,10 @@ def _generate_thematic_posts(
                 file_path=str(out_path) if written else "",
             )
         )
+
+        # Mark seed as used if this was a seed-driven theme
+        if theme.slug in seed_angles and not dry_run:
+            seed_id = theme.slug.removeprefix("seed-")
+            seed_store.mark_used(seed_id, f"blog-{theme.slug}")
 
     return written
