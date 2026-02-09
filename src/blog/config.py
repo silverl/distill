@@ -54,6 +54,6 @@ class BlogConfig(BaseModel):
     target_word_count: int = 1200
     include_diagrams: bool = True
     model: str | None = None
-    claude_timeout: int = 180
+    claude_timeout: int = 360
     platforms: list[Platform] = Field(default_factory=lambda: [Platform.OBSIDIAN])
     ghost: GhostConfig = Field(default_factory=GhostConfig)

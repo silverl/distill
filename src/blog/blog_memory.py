@@ -29,6 +29,7 @@ class BlogPostSummary(BaseModel):
     themes_covered: list[str] = Field(default_factory=list)
     examples_used: list[str] = Field(default_factory=list)
     platforms_published: list[str] = Field(default_factory=list)
+    postiz_ids: list[str] = Field(default_factory=list)
 
 
 class BlogMemory(BaseModel):

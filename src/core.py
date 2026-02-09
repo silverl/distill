@@ -675,6 +675,7 @@ def generate_blog_posts(
     platforms: list[str] | None = None,
     ghost_config: Any | None = None,
     report: PipelineReport | None = None,
+    postiz_limit: int | None = None,
 ) -> list[Path]:
     """Generate blog posts from existing journal entries.
 
@@ -693,6 +694,7 @@ def generate_blog_posts(
         target_word_count: Target word count for posts.
         platforms: List of platform names to publish to. Defaults to ["obsidian"].
         ghost_config: Optional GhostConfig for live Ghost CMS publishing.
+        postiz_limit: Max number of posts to push to Postiz per run. None = unlimited.
 
     Returns:
         List of written blog post file paths.
@@ -758,6 +760,8 @@ def generate_blog_posts(
         unified.inject_trends(render_trends_for_prompt(trends))
 
     written: list[Path] = []
+    # Shared mutable counter for Postiz rate-limiting across all post types
+    postiz_counter = [0]  # list so inner functions can mutate
 
     # 3. Weekly posts
     if post_type in ("weekly", "all"):
@@ -779,6 +783,8 @@ def generate_blog_posts(
                 intake_digests=intake_digests,
                 project_context=project_context,
                 editorial_store=editorial_store,
+                postiz_limit=postiz_limit,
+                postiz_counter=postiz_counter,
             )
         )
 
@@ -802,6 +808,8 @@ def generate_blog_posts(
                 intake_digests=intake_digests,
                 project_context=project_context,
                 editorial_store=editorial_store,
+                postiz_limit=postiz_limit,
+                postiz_counter=postiz_counter,
             )
         )
 
@@ -821,6 +829,8 @@ def generate_blog_posts(
                 blog_memory=blog_memory,
                 ghost_config=ghost_config,
                 postiz_config=postiz_config,
+                postiz_limit=postiz_limit,
+                postiz_counter=postiz_counter,
             )
         )
 
@@ -868,6 +878,8 @@ def _generate_weekly_posts(
     intake_digests: list[Any] | None = None,
     project_context: str = "",
     editorial_store: Any | None = None,
+    postiz_limit: int | None = None,
+    postiz_counter: list[int] | None = None,
 ) -> list[Path]:
     """Generate weekly synthesis blog posts."""
     from distill.blog.config import Platform
@@ -934,6 +946,20 @@ def _generate_weekly_posts(
 
         # Publish to each platform
         for platform_name in platforms:
+            # Dedup: skip if already published to this platform
+            if not force and blog_memory.is_published_to(slug, platform_name):
+                logger.debug("Already published %s to %s, skipping", slug, platform_name)
+                continue
+
+            # Rate-limit Postiz pushes
+            if platform_name == "postiz" and postiz_limit is not None:
+                current = postiz_counter[0] if postiz_counter else 0
+                if current >= postiz_limit:
+                    logger.info(
+                        "Postiz limit reached (%d), skipping %s", postiz_limit, slug
+                    )
+                    continue
+
             try:
                 p = Platform(platform_name)
                 publisher = create_publisher(
@@ -947,6 +973,8 @@ def _generate_weekly_posts(
                 _atomic_write(out_path, content)
                 written.append(out_path)
                 blog_memory.mark_published(slug, platform_name)
+                if platform_name == "postiz" and postiz_counter is not None:
+                    postiz_counter[0] += 1
             except Exception:
                 logger.warning("Failed to publish %s to %s", slug, platform_name, exc_info=True)
 
@@ -1307,6 +1335,8 @@ def _generate_thematic_posts(
     intake_digests: list[Any] | None = None,
     project_context: str = "",
     editorial_store: Any | None = None,
+    postiz_limit: int | None = None,
+    postiz_counter: list[int] | None = None,
 ) -> list[Path]:
     """Generate thematic deep-dive blog posts."""
     from distill.blog.config import Platform
@@ -1401,6 +1431,20 @@ def _generate_thematic_posts(
 
         # Publish to each platform
         for platform_name in platforms:
+            # Dedup: skip if already published to this platform
+            if not force and blog_memory.is_published_to(theme.slug, platform_name):
+                logger.debug("Already published %s to %s, skipping", theme.slug, platform_name)
+                continue
+
+            # Rate-limit Postiz pushes
+            if platform_name == "postiz" and postiz_limit is not None:
+                current = postiz_counter[0] if postiz_counter else 0
+                if current >= postiz_limit:
+                    logger.info(
+                        "Postiz limit reached (%d), skipping %s", postiz_limit, theme.slug
+                    )
+                    continue
+
             try:
                 p = Platform(platform_name)
                 publisher = create_publisher(
@@ -1414,6 +1458,8 @@ def _generate_thematic_posts(
                 _atomic_write(out_path, content)
                 written.append(out_path)
                 blog_memory.mark_published(theme.slug, platform_name)
+                if platform_name == "postiz" and postiz_counter is not None:
+                    postiz_counter[0] += 1
             except Exception:
                 logger.warning(
                     "Failed to publish %s to %s", theme.slug, platform_name, exc_info=True
@@ -1451,6 +1497,8 @@ def _generate_reading_list_posts(
     blog_memory: Any,
     ghost_config: Any | None = None,
     postiz_config: Any | None = None,
+    postiz_limit: int | None = None,
+    postiz_counter: list[int] | None = None,
 ) -> list[Path]:
     """Generate reading list posts from intake content store."""
     from distill.blog.config import Platform
@@ -1497,6 +1545,20 @@ def _generate_reading_list_posts(
 
         # Publish
         for platform_name in platforms:
+            # Dedup: skip if already published to this platform
+            if not force and blog_memory.is_published_to(slug, platform_name):
+                logger.debug("Already published %s to %s, skipping", slug, platform_name)
+                continue
+
+            # Rate-limit Postiz pushes
+            if platform_name == "postiz" and postiz_limit is not None:
+                current = postiz_counter[0] if postiz_counter else 0
+                if current >= postiz_limit:
+                    logger.info(
+                        "Postiz limit reached (%d), skipping %s", postiz_limit, slug
+                    )
+                    continue
+
             try:
                 p = Platform(platform_name)
                 publisher = create_publisher(
@@ -1510,6 +1572,9 @@ def _generate_reading_list_posts(
                 out_path = out_path.parent.parent / "reading-list" / out_path.name
                 _atomic_write(out_path, prose)
                 written.append(out_path)
+                blog_memory.mark_published(slug, platform_name)
+                if platform_name == "postiz" and postiz_counter is not None:
+                    postiz_counter[0] += 1
             except Exception:
                 logger.warning("Failed to publish reading list to %s", platform_name, exc_info=True)
 

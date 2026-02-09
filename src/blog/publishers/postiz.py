@@ -58,6 +58,11 @@ class PostizBlogPublisher(BlogPublisher):
     def index_path(self, output_dir: Path) -> Path:
         return output_dir / "blog" / "postiz" / "index.md"
 
+    @property
+    def last_post_ids(self) -> list[str]:
+        """Return Postiz post IDs from the most recent _adapt_and_push call."""
+        return list(self._last_post_ids)
+
     def _adapt_and_push(
         self, prose: str, context_label: str, post_kind: str, editorial_hint: str = ""
     ) -> str:
@@ -65,6 +70,7 @@ class PostizBlogPublisher(BlogPublisher):
         from distill.integrations.mapping import resolve_integration_ids
         from distill.integrations.postiz import PostizClient, PostizConfig
 
+        self._last_post_ids: list[str] = []
         config = self._postiz_config or PostizConfig.from_env()
 
         if not config.is_configured:
@@ -108,12 +114,16 @@ class PostizBlogPublisher(BlogPublisher):
 
             # Push post to Postiz
             try:
-                client.create_post(
+                response = client.create_post(
                     adapted,
                     integration_ids,
                     post_type=post_type,
                     scheduled_at=scheduled_at,
                 )
+                # Capture post ID from API response
+                post_id = response.get("id", "") if isinstance(response, dict) else ""
+                if post_id:
+                    self._last_post_ids.append(str(post_id))
                 results.append(f"## {platform}")
                 if scheduled_at:
                     results.append(
