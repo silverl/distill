@@ -341,7 +341,7 @@ class PgvectorStore:
             site_name=r.get("site_name", ""),
             source=ContentSource(r["source"]),
             source_id=r.get("source_id", ""),
-            content_type=ContentType(r.get("content_type", "article")),
+            content_type=ContentType(r.get("content_type") or "article"),
             tags=list(r.get("tags", []) or []),
             topics=list(r.get("topics", []) or []),
             published_at=r.get("published_at"),
