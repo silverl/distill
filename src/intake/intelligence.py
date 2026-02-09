@@ -35,8 +35,17 @@ def _call_claude(prompt: str, model: str | None = None, timeout: int = 120) -> s
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        pass
+        logger.warning(
+            "Claude CLI returned exit code %d: %s",
+            result.returncode,
+            result.stderr.strip()[:200] if result.stderr else "(no stderr)",
+        )
+    except FileNotFoundError:
+        logger.warning("Claude CLI not found on PATH")
+    except subprocess.TimeoutExpired:
+        logger.warning("Claude CLI timed out after %ds", timeout)
+    except OSError as exc:
+        logger.warning("Claude CLI OSError: %s", exc)
     return ""
 
 
