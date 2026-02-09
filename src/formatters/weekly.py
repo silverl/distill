@@ -188,7 +188,9 @@ class WeeklyDigestFormatter:
                 for tag in s.tags:
                     day_tags[tag] += 1
             top_tag = day_tags.most_common(1)[0][0] if day_tags else "-"
-            day_link = format_obsidian_link(f"daily/daily-{d.isoformat()}", d.strftime("%a %m/%d"))
+            day_name = d.strftime("%a %m/%d")
+            day_note = f"daily/daily-{d.isoformat()}"
+            day_link = f"[[{day_note}\\|{day_name}]]"
             lines.append(
                 f"| {day_link} | {len(day_sessions)} | {format_duration(day_dur)} | {top_tag} |"
             )
