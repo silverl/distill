@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 # Batch size for LLM calls
 _BATCH_SIZE = 8
 
+# Structured-output tasks (entity extraction, classification) use Haiku for speed/cost.
+# Can be overridden by passing model= to individual functions.
+_INTELLIGENCE_MODEL = "claude-haiku-4-5-20251001"
+
 
 def _call_claude(prompt: str, model: str | None = None, timeout: int = 120) -> str:
     """Call Claude CLI with a prompt. Returns stdout or empty string on failure."""
@@ -166,7 +170,7 @@ def extract_entities(
     for batch_start in range(0, len(items), _BATCH_SIZE):
         batch = items[batch_start : batch_start + _BATCH_SIZE]
         prompt = _build_entity_prompt(batch)
-        response = _call_claude(prompt, model=model, timeout=timeout)
+        response = _call_claude(prompt, model=model or _INTELLIGENCE_MODEL, timeout=timeout)
 
         if not response:
             logger.warning("Entity extraction failed for batch starting at %d", batch_start)
@@ -211,7 +215,7 @@ def classify_items(
     for batch_start in range(0, len(items), _BATCH_SIZE):
         batch = items[batch_start : batch_start + _BATCH_SIZE]
         prompt = _build_classification_prompt(batch)
-        response = _call_claude(prompt, model=model, timeout=timeout)
+        response = _call_claude(prompt, model=model or _INTELLIGENCE_MODEL, timeout=timeout)
 
         if not response:
             logger.warning("Classification failed for batch starting at %d", batch_start)
@@ -251,7 +255,7 @@ def extract_topics(
         return existing_topics or []
 
     prompt = _build_topic_prompt(items, existing_topics or [])
-    response = _call_claude(prompt, model=model, timeout=timeout)
+    response = _call_claude(prompt, model=model or _INTELLIGENCE_MODEL, timeout=timeout)
 
     if not response:
         return existing_topics or []
