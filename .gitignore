@@ -28,6 +28,10 @@ htmlcov/
 .env
 .env.*
 
+# User config (runtime, not repo config)
+.distill.toml
+.distill-notes.json
+
 # IDE
 .idea/
 .vscode/

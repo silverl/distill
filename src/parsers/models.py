@@ -231,7 +231,11 @@ class BaseSession(BaseModel):
         if et is None:
             # Fall back to deriving from message timestamps (need 2+ for a span)
             timestamps = [
-                self._ensure_utc(m.timestamp) for m in self.messages if m.timestamp is not None
+                ts
+                for m in self.messages
+                if m.timestamp is not None
+                for ts in [self._ensure_utc(m.timestamp)]
+                if ts is not None
             ]
             if len(timestamps) >= 2:
                 et = max(timestamps)

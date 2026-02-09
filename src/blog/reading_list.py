@@ -139,7 +139,7 @@ def render_reading_list_prompt(context: ReadingListContext) -> str:
         author = item.get("author", "")
         site = item.get("site", "")
         excerpt = item.get("excerpt", "")
-        tags = item.get("tags", [])
+        tags: list[str] = item.get("tags", [])  # type: ignore[assignment]
         attribution = f" by {author}" if author else (f" ({site})" if site else "")
 
         lines.append(f"## {i}. {title}{attribution}")

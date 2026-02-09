@@ -74,13 +74,16 @@ class BlogSynthesizer:
         user_prompt = _render_thematic_prompt(context)
         return self._call_claude(system_prompt, user_prompt, context.theme.slug)
 
-    def adapt_for_platform(self, prose: str, platform: str, slug: str) -> str:
+    def adapt_for_platform(
+        self, prose: str, platform: str, slug: str, editorial_hint: str = ""
+    ) -> str:
         """Adapt blog prose for a specific platform.
 
         Args:
             prose: Canonical blog post prose.
             platform: Target platform key (e.g., "twitter", "linkedin", "reddit").
             slug: Post slug for logging.
+            editorial_hint: Optional editorial direction to prepend.
 
         Returns:
             Platform-adapted text.
@@ -92,7 +95,10 @@ class BlogSynthesizer:
         # Map Postiz provider names to prompt keys (e.g. "x" → "twitter")
         prompt_key = {"x": "twitter"}.get(platform, platform)
         system_prompt = SOCIAL_PROMPTS[prompt_key]
-        return self._call_claude(system_prompt, prose, f"adapt-{platform}-{slug}")
+        input_text = prose
+        if editorial_hint:
+            input_text = f"EDITORIAL DIRECTION: {editorial_hint}\n\n{prose}"
+        return self._call_claude(system_prompt, input_text, f"adapt-{platform}-{slug}")
 
     def extract_blog_memory(
         self, prose: str, slug: str, title: str, post_type: str
@@ -196,6 +202,14 @@ def _render_weekly_prompt(context: WeeklyBlogContext) -> str:
         lines.append(context.working_memory)
         lines.append("")
 
+    if context.project_context:
+        lines.append(context.project_context)
+        lines.append("")
+
+    if context.editorial_notes:
+        lines.append(context.editorial_notes)
+        lines.append("")
+
     lines.append("# Daily Journal Entries")
     lines.append("")
     lines.append(context.combined_prose)
@@ -218,6 +232,14 @@ def _render_thematic_prompt(context: ThematicBlogContext) -> str:
         lines.append("## Relevant Ongoing Threads")
         for thread in context.relevant_threads:
             lines.append(f"- {thread.name} ({thread.status}): {thread.summary}")
+        lines.append("")
+
+    if context.project_context:
+        lines.append(context.project_context)
+        lines.append("")
+
+    if context.editorial_notes:
+        lines.append(context.editorial_notes)
         lines.append("")
 
     lines.append("# Evidence from Journal Entries")

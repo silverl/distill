@@ -33,6 +33,9 @@ jobs:
       - name: Format check
         run: uv run ruff format --check src/
 
+      - name: Type check
+        run: uv run mypy src/ --no-error-summary
+
       - name: Run tests
         run: |
           uv run pytest tests/ -x -q \

@@ -735,7 +735,7 @@ class CrossSessionCorrelator(BaseAnalyzer):
                     source_tools[source][tool.name] += tool.count
 
         # Find tools unique to certain sources
-        all_tools = set()
+        all_tools: set[str] = set()
         for tools in source_tools.values():
             all_tools.update(tools.keys())
 

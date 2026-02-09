@@ -21,6 +21,15 @@ CONFIG_SEARCH_PATHS = [
 ]
 
 
+class ProjectConfig(BaseModel):
+    """Single project description for LLM context injection."""
+
+    name: str
+    description: str
+    url: str = ""
+    tags: list[str] = Field(default_factory=list)
+
+
 class OutputConfig(BaseModel):
     """[output] section."""
 
@@ -131,6 +140,18 @@ class DistillConfig(BaseModel):
     youtube: YouTubeSectionConfig = Field(default_factory=YouTubeSectionConfig)
     postiz: PostizSectionConfig = Field(default_factory=PostizSectionConfig)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
+    projects: list[ProjectConfig] = Field(default_factory=list)
+
+    def render_project_context(self) -> str:
+        """Render project descriptions for LLM prompt injection."""
+        if not self.projects:
+            return ""
+        lines = ["## Project Context", ""]
+        for p in self.projects:
+            lines.append(f"**{p.name}**: {p.description}")
+            if p.url:
+                lines.append(f"  URL: {p.url}")
+        return "\n".join(lines)
 
     def to_journal_config(self) -> object:
         """Convert to JournalConfig for the journal pipeline."""
@@ -333,7 +354,9 @@ def _apply_env_vars(config: DistillConfig) -> DistillConfig:
         data["postiz"]["weekly_day"] = int(day_raw)
     tdays_raw = os.environ.get("POSTIZ_THEMATIC_DAYS")
     if tdays_raw is not None:
-        data["postiz"]["thematic_days"] = [int(d.strip()) for d in tdays_raw.split(",") if d.strip()]
+        data["postiz"]["thematic_days"] = [
+            int(d.strip()) for d in tdays_raw.split(",") if d.strip()
+        ]
 
     # Global model env var overrides all sections
     global_model = os.environ.get("DISTILL_MODEL")

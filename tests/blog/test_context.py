@@ -110,6 +110,20 @@ class TestPrepareWeeklyContext:
         assert ctx.total_sessions == 0
         assert ctx.combined_prose == ""
 
+    def test_project_context_and_editorial_notes_default_empty(self):
+        entries = [_make_entry(day=3)]
+        ctx = prepare_weekly_context(entries, 2026, 6)
+        assert ctx.project_context == ""
+        assert ctx.editorial_notes == ""
+
+    def test_project_context_and_editorial_notes_settable(self):
+        entries = [_make_entry(day=3)]
+        ctx = prepare_weekly_context(entries, 2026, 6)
+        ctx.project_context = "## Project Context\n\n**VerMAS**: Multi-agent platform"
+        ctx.editorial_notes = "## Editorial Direction\n\n- Focus on X"
+        assert "VerMAS" in ctx.project_context
+        assert "Focus on X" in ctx.editorial_notes
+
 
 class TestPrepareThematicContext:
     def test_basic_assembly(self):
@@ -188,3 +202,17 @@ class TestPrepareThematicContext:
         earlier_pos = ctx.combined_evidence.index("Earlier.")
         later_pos = ctx.combined_evidence.index("Later.")
         assert earlier_pos < later_pos
+
+    def test_thematic_project_context_and_editorial_notes_default_empty(self):
+        theme = ThemeDefinition(slug="t", title="T", keywords=[], thread_patterns=[])
+        entries = [_make_entry(day=3)]
+        ctx = prepare_thematic_context(theme, entries)
+        assert ctx.project_context == ""
+        assert ctx.editorial_notes == ""
+
+    def test_thematic_project_context_settable(self):
+        theme = ThemeDefinition(slug="t", title="T", keywords=[], thread_patterns=[])
+        entries = [_make_entry(day=3)]
+        ctx = prepare_thematic_context(theme, entries)
+        ctx.project_context = "## Project Context\n\n**Distill**: Content pipeline"
+        assert "Distill" in ctx.project_context

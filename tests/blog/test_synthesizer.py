@@ -221,3 +221,64 @@ class TestBlogSynthesizer:
         cmd = mock_run.call_args[0][0]
         prompt_arg = cmd[-1]
         assert "Previous Blog Posts" in prompt_arg
+
+    @patch("distill.blog.synthesizer.subprocess.run")
+    def test_weekly_prompt_includes_project_context(self, mock_run: MagicMock):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="# Post", stderr=""
+        )
+        config = BlogConfig()
+        synthesizer = BlogSynthesizer(config)
+        ctx = _make_weekly_context()
+        ctx.project_context = "## Project Context\n\n**VerMAS**: Multi-agent platform"
+        synthesizer.synthesize_weekly(ctx)
+
+        cmd = mock_run.call_args[0][0]
+        prompt_arg = cmd[-1]
+        assert "**VerMAS**: Multi-agent platform" in prompt_arg
+
+    @patch("distill.blog.synthesizer.subprocess.run")
+    def test_weekly_prompt_includes_editorial_notes(self, mock_run: MagicMock):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="# Post", stderr=""
+        )
+        config = BlogConfig()
+        synthesizer = BlogSynthesizer(config)
+        ctx = _make_weekly_context()
+        ctx.editorial_notes = "## Editorial Direction\n\n- Focus on fan-in pattern"
+        synthesizer.synthesize_weekly(ctx)
+
+        cmd = mock_run.call_args[0][0]
+        prompt_arg = cmd[-1]
+        assert "Focus on fan-in pattern" in prompt_arg
+
+    @patch("distill.blog.synthesizer.subprocess.run")
+    def test_thematic_prompt_includes_project_context(self, mock_run: MagicMock):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="# Post", stderr=""
+        )
+        config = BlogConfig()
+        synthesizer = BlogSynthesizer(config)
+        ctx = _make_thematic_context()
+        ctx.project_context = "## Project Context\n\n**Distill**: Content pipeline"
+        synthesizer.synthesize_thematic(ctx)
+
+        cmd = mock_run.call_args[0][0]
+        prompt_arg = cmd[-1]
+        assert "**Distill**: Content pipeline" in prompt_arg
+
+    @patch("distill.blog.synthesizer.subprocess.run")
+    def test_adapt_for_platform_with_editorial_hint(self, mock_run: MagicMock):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="1/ Adapted thread", stderr=""
+        )
+        config = BlogConfig()
+        synthesizer = BlogSynthesizer(config)
+        synthesizer.adapt_for_platform(
+            "Blog prose", "twitter", "weekly-W06",
+            editorial_hint="Emphasize the fan-in pattern"
+        )
+
+        cmd = mock_run.call_args[0][0]
+        prompt_arg = cmd[-1]
+        assert "EDITORIAL DIRECTION: Emphasize the fan-in pattern" in prompt_arg

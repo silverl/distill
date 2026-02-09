@@ -34,11 +34,17 @@ class PostizBlogPublisher(BlogPublisher):
 
     def format_weekly(self, context: Any, prose: str) -> str:
         """Adapt weekly prose for social platforms and push to Postiz."""
-        return self._adapt_and_push(prose, context_label="weekly", post_kind="weekly")
+        editorial_hint = getattr(context, "editorial_notes", "") or ""
+        return self._adapt_and_push(
+            prose, context_label="weekly", post_kind="weekly", editorial_hint=editorial_hint
+        )
 
     def format_thematic(self, context: Any, prose: str) -> str:
         """Adapt thematic prose for social platforms and push to Postiz."""
-        return self._adapt_and_push(prose, context_label="thematic", post_kind="thematic")
+        editorial_hint = getattr(context, "editorial_notes", "") or ""
+        return self._adapt_and_push(
+            prose, context_label="thematic", post_kind="thematic", editorial_hint=editorial_hint
+        )
 
     def weekly_output_path(self, output_dir: Path, year: int, week: int) -> Path:
         return output_dir / "blog" / "postiz" / f"weekly-{year}-W{week:02d}.md"
@@ -52,7 +58,9 @@ class PostizBlogPublisher(BlogPublisher):
     def index_path(self, output_dir: Path) -> Path:
         return output_dir / "blog" / "postiz" / "index.md"
 
-    def _adapt_and_push(self, prose: str, context_label: str, post_kind: str) -> str:
+    def _adapt_and_push(
+        self, prose: str, context_label: str, post_kind: str, editorial_hint: str = ""
+    ) -> str:
         """Adapt prose for each target platform and push posts."""
         from distill.integrations.mapping import resolve_integration_ids
         from distill.integrations.postiz import PostizClient, PostizConfig
@@ -93,7 +101,7 @@ class PostizBlogPublisher(BlogPublisher):
             if self._synthesizer and hasattr(self._synthesizer, "adapt_for_platform"):
                 try:
                     adapted = self._synthesizer.adapt_for_platform(
-                        prose, platform, context_label
+                        prose, platform, context_label, editorial_hint=editorial_hint
                     )
                 except Exception:
                     logger.warning("Failed to adapt for %s, using raw prose", platform)

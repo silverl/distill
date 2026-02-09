@@ -31,15 +31,15 @@ def _split_thread(content: str) -> list[dict[str, object]]:
     stripped = content.strip()
 
     # Primary: split on --- delimiter lines
-    if re.search(r'^\s*---\s*$', stripped, re.MULTILINE):
-        parts = re.split(r'\n\s*---\s*\n', stripped)
+    if re.search(r"^\s*---\s*$", stripped, re.MULTILINE):
+        parts = re.split(r"\n\s*---\s*\n", stripped)
         tweets = [p.strip() for p in parts if p.strip()]
         if len(tweets) > 1:
             return [{"content": t, "image": []} for t in tweets]
 
     # Fallback: numbered tweets (1/ ... 2/ ...)
-    parts = re.split(r'\n*(?=\d+[/)]\s)', stripped)
-    tweets = [re.sub(r'^\d+[/)]\s*', '', p).strip() for p in parts if p.strip()]
+    parts = re.split(r"\n*(?=\d+[/)]\s)", stripped)
+    tweets = [re.sub(r"^\d+[/)]\s*", "", p).strip() for p in parts if p.strip()]
     if len(tweets) > 1:
         return [{"content": t, "image": []} for t in tweets]
 
@@ -145,7 +145,10 @@ class PostizClient:
                 PostizIntegration(
                     id=item.get("id", ""),
                     name=item.get("name", ""),
-                    provider=item.get("providerIdentifier", item.get("provider", "")) or item.get("identifier", ""),
+                    provider=(
+                        item.get("providerIdentifier", item.get("provider", ""))
+                        or item.get("identifier", "")
+                    ),
                     identifier=item.get("identifier", ""),
                     profile=item.get("profile", ""),
                 )
@@ -176,7 +179,7 @@ class PostizClient:
         Returns:
             API response dict.
         """
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         ptype = post_type or self._config.default_type
 
@@ -198,10 +201,7 @@ class PostizClient:
                 if channel:
                     settings["channel"] = channel
             # X threads: split numbered tweets into separate value entries
-            if prov == "x":
-                value = _split_thread(content)
-            else:
-                value = [{"content": content, "image": []}]
+            value = _split_thread(content) if prov == "x" else [{"content": content, "image": []}]
             post: dict[str, object] = {
                 "integration": {"id": iid},
                 "value": value,
@@ -209,7 +209,7 @@ class PostizClient:
             }
             posts.append(post)
 
-        date_str = scheduled_at or datetime.now(timezone.utc).isoformat()
+        date_str = scheduled_at or datetime.now(UTC).isoformat()
         body: dict[str, object] = {
             "type": ptype,
             "shortLink": False,

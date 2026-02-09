@@ -59,7 +59,7 @@ class GmailParser(ContentParser):
 
         return items
 
-    def _build_service(self):
+    def _build_service(self) -> object:
         """Build the Gmail API service via OAuth."""
         from distill.intake.parsers import _google_auth
 

@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+from collections.abc import Generator
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated
@@ -35,7 +36,7 @@ _stderr_console = Console(stderr=True)
 
 
 @contextlib.contextmanager
-def _progress_context(quiet: bool = False):
+def _progress_context(quiet: bool = False) -> Generator[object, None, None]:
     """Yield a Progress context or a no-op depending on quiet flag."""
     if quiet:
         yield None
@@ -1349,6 +1350,12 @@ def run_cmd(
     errors: list[str] = []
     report = PipelineReport()
 
+    # Load project context for prompt injection
+    from distill.config import load_config as _load_config
+
+    _cfg = _load_config()
+    _project_context = _cfg.render_project_context()
+
     # Delta window: only parse sessions from the --since date or last 2 days
     if force:
         delta_since = None
@@ -1387,6 +1394,7 @@ def run_cmd(
                     dry_run=dry_run,
                     model=model,
                     report=report,
+                    project_context=_project_context,
                 )
                 all_written.extend(written)
                 report.items_processed["journal"] = len(written)
@@ -1705,6 +1713,74 @@ def seed_list(
         tag_str = f" [dim][{', '.join(seed.tags)}][/dim]" if seed.tags else ""
         console.print(f"  {status}{seed.text}{tag_str}")
         console.print(f"    [dim]ID: {seed.id} | {seed.created_at.date()}[/dim]")
+
+
+@app.command(name="note")
+def note_add(
+    text: Annotated[
+        str,
+        typer.Argument(help="Editorial direction or emphasis for content generation."),
+    ],
+    target: Annotated[
+        str,
+        typer.Option(
+            "--target",
+            help="Target scope (e.g., 'week:2026-W06', 'theme:multi-agent'). Empty = global.",
+        ),
+    ] = "",
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output directory (where notes are stored).",
+        ),
+    ] = Path("./insights"),
+) -> None:
+    """Add an editorial note to guide content generation."""
+    from distill.editorial import EditorialStore
+
+    store = EditorialStore(output)
+    note = store.add(text, target=target)
+    console.print(f"[green]Note added:[/green] {note.text}")
+    if target:
+        console.print(f"  Target: {target}")
+    console.print(f"  ID: {note.id}")
+
+
+@app.command(name="notes")
+def note_list(
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output directory (where notes are stored).",
+        ),
+    ] = Path("./insights"),
+    show_all: Annotated[
+        bool,
+        typer.Option(
+            "--all",
+            help="Show all notes, including used ones.",
+        ),
+    ] = False,
+) -> None:
+    """List active editorial notes."""
+    from distill.editorial import EditorialStore
+
+    store = EditorialStore(output)
+    notes = store.list_all() if show_all else store.list_active()
+
+    if not notes:
+        console.print("[yellow]No editorial notes found.[/yellow]")
+        return
+
+    for note in notes:
+        status = "[dim](used)[/dim] " if note.used else ""
+        target_str = f" [dim][{note.target}][/dim]" if note.target else ""
+        console.print(f"  {status}{note.text}{target_str}")
+        console.print(f"    [dim]ID: {note.id} | {note.created_at.date()}[/dim]")
 
 
 if __name__ == "__main__":

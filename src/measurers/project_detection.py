@@ -89,7 +89,7 @@ def _create_sample_data(base: Path) -> None:
 
     agents_dir = vermas_dir / "knowledge" / "agents"
     agents_dir.mkdir(parents=True)
-    learnings = {
+    learnings: dict[str, object] = {
         "agents": {
             "general": {
                 "learnings": [],

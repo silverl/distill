@@ -41,6 +41,7 @@ class DailyContext(BaseModel):
     key_outcomes: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     previous_context: str = ""
+    project_context: str = ""
 
     def render_text(self) -> str:
         """Render as structured text for LLM context."""
@@ -52,6 +53,10 @@ class DailyContext(BaseModel):
         if self.projects_worked:
             lines.append(f"Projects: {', '.join(self.projects_worked)}")
         lines.append("")
+
+        if self.project_context:
+            lines.append(self.project_context)
+            lines.append("")
 
         for i, s in enumerate(self.session_summaries, 1):
             lines.append(f"## Session {i} ({s.time}, {s.source})")

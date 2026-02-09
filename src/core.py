@@ -516,6 +516,7 @@ def generate_journal_notes(
     dry_run: bool = False,
     model: str | None = None,
     report: PipelineReport | None = None,
+    project_context: str = "",
 ) -> list[Path]:
     """Generate journal entries from sessions using LLM synthesis.
 
@@ -575,6 +576,7 @@ def generate_journal_notes(
             continue
 
         context = prepare_daily_context(day_sessions, target_date, config)
+        context.project_context = project_context
         # Use unified memory for prompt context, fall back to legacy
         unified_text = unified.render_for_prompt(focus="sessions")
         context.previous_context = unified_text if unified_text else memory.render_for_prompt()
@@ -705,6 +707,8 @@ def generate_blog_posts(
         save_blog_state,
     )
     from distill.blog.synthesizer import BlogSynthesizer
+    from distill.config import load_config
+    from distill.editorial import EditorialStore
     from distill.journal.memory import load_memory
     from distill.memory import load_unified_memory, save_unified_memory
     from distill.trends import detect_trends, render_trends_for_prompt
@@ -718,6 +722,11 @@ def generate_blog_posts(
         from distill.integrations.postiz import PostizConfig as _PostizConfig
 
         postiz_config = _PostizConfig.from_env()
+
+    # Load project context and editorial store
+    distill_config = load_config()
+    project_context = distill_config.render_project_context()
+    editorial_store = EditorialStore(output_dir)
 
     config = BlogConfig(
         target_word_count=target_word_count,
@@ -768,6 +777,8 @@ def generate_blog_posts(
                 ghost_config=ghost_config,
                 postiz_config=postiz_config,
                 intake_digests=intake_digests,
+                project_context=project_context,
+                editorial_store=editorial_store,
             )
         )
 
@@ -789,6 +800,8 @@ def generate_blog_posts(
                 ghost_config=ghost_config,
                 postiz_config=postiz_config,
                 intake_digests=intake_digests,
+                project_context=project_context,
+                editorial_store=editorial_store,
             )
         )
 
@@ -853,6 +866,8 @@ def _generate_weekly_posts(
     ghost_config: Any | None = None,
     postiz_config: Any | None = None,
     intake_digests: list[Any] | None = None,
+    project_context: str = "",
+    editorial_store: Any | None = None,
 ) -> list[Path]:
     """Generate weekly synthesis blog posts."""
     from distill.blog.config import Platform
@@ -891,6 +906,11 @@ def _generate_weekly_posts(
         context = prepare_weekly_context(
             week_entries, year, week, memory, intake_digests=intake_digests
         )
+        context.project_context = project_context
+        if editorial_store is not None:
+            context.editorial_notes = editorial_store.render_for_prompt(
+                target=f"week:{year}-W{week:02d}"
+            )
 
         if dry_run:
             print(f"[DRY RUN] Would generate: {slug}")
@@ -1285,6 +1305,8 @@ def _generate_thematic_posts(
     ghost_config: Any | None = None,
     postiz_config: Any | None = None,
     intake_digests: list[Any] | None = None,
+    project_context: str = "",
+    editorial_store: Any | None = None,
 ) -> list[Path]:
     """Generate thematic deep-dive blog posts."""
     from distill.blog.config import Platform
@@ -1352,6 +1374,11 @@ def _generate_thematic_posts(
             intake_digests=intake_digests,
             seed_angle=seed_angles.get(theme.slug, ""),
         )
+        context.project_context = project_context
+        if editorial_store is not None:
+            context.editorial_notes = editorial_store.render_for_prompt(
+                target=f"theme:{theme.slug}"
+            )
 
         if dry_run:
             print(f"[DRY RUN] Would generate: {theme.slug}")

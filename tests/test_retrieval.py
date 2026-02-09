@@ -56,6 +56,14 @@ class TestBuildQueryText:
         text = _build_query_text(items)
         assert len(text) <= 1000
 
+    def test_build_query_text_items_with_no_title_or_excerpt(self):
+        """Items without title or excerpt produce empty query text, causing early return."""
+        item = MagicMock()
+        item.title = ""
+        item.excerpt = ""
+        text = _build_query_text([item])
+        assert text == ""
+
 
 class TestFormatRelatedContext:
     def test_formats_items(self, mock_item):
@@ -85,6 +93,15 @@ class TestFormatRelatedContext:
         item.body = "This is the body content"
         text = _format_related_context([item])
         assert "body content" in text
+
+    def test_item_without_title(self):
+        item = MagicMock()
+        item.title = ""
+        item.published_at = None
+        item.excerpt = ""
+        item.body = ""
+        text = _format_related_context([item])
+        assert "Untitled" in text
 
 
 class TestGetRelatedContext:
@@ -133,6 +150,34 @@ class TestGetRelatedContext:
         mock_store.find_similar.return_value = []
         get_related_context([], mock_store, query_text="custom topic")
         mock_embed.assert_called_once_with("custom topic")
+
+    @patch("distill.retrieval._embeddings_available", return_value=True)
+    @patch("distill.retrieval._embed_text", return_value=[0.1] * 384)
+    def test_returns_empty_when_query_text_builds_empty(self, mock_embed, mock_avail, mock_store):
+        """When items produce empty query_text from _build_query_text, returns empty string."""
+        item = MagicMock()
+        item.id = "item-empty"
+        item.title = ""
+        item.excerpt = ""
+        result = get_related_context([item], mock_store)
+        assert result == ""
+        mock_embed.assert_not_called()  # Should return before embedding
+
+    @patch("distill.retrieval._embeddings_available", return_value=True)
+    @patch("distill.retrieval._embed_text", return_value=[0.1] * 384)
+    def test_handles_similarity_search_error(self, mock_embed, mock_avail, mock_item, mock_store):
+        """When store.find_similar raises, returns empty string."""
+        mock_store.find_similar.side_effect = RuntimeError("Database error")
+        result = get_related_context([mock_item], mock_store)
+        assert result == ""
+
+    @patch("distill.retrieval._embeddings_available", return_value=True)
+    @patch("distill.retrieval._embed_text", return_value=[0.1] * 384)
+    def test_returns_empty_when_no_similar_found(self, mock_embed, mock_avail, mock_item, mock_store):
+        """When find_similar returns empty list, returns empty string."""
+        mock_store.find_similar.return_value = []
+        result = get_related_context([mock_item], mock_store)
+        assert result == ""
 
 
 class TestGetRelatedContextForTopic:

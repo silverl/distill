@@ -63,7 +63,7 @@ class YouTubeParser(ContentParser):
 
         return items
 
-    def _build_service(self):
+    def _build_service(self) -> object:
         """Build the YouTube Data API service."""
         cfg = self._config.youtube
 

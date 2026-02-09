@@ -66,10 +66,12 @@ class TestPostizBlogPublisher:
             postiz_config=config,
             target_platforms=["twitter"],
         )
-        result = pub.format_weekly(MagicMock(), "Weekly prose")
+        context = MagicMock()
+        context.editorial_notes = ""
+        result = pub.format_weekly(context, "Weekly prose")
 
         synthesizer.adapt_for_platform.assert_called_once_with(
-            "Weekly prose", "twitter", "weekly"
+            "Weekly prose", "twitter", "weekly", editorial_hint=""
         )
         mock_client.create_post.assert_called_once_with(
             "Adapted tweet", ["int-1"], post_type="draft", scheduled_at=None

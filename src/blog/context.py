@@ -30,6 +30,8 @@ class WeeklyBlogContext(BaseModel):
     combined_prose: str = ""
     intake_context: str = ""
     reading_themes: list[str] = Field(default_factory=list)
+    project_context: str = ""
+    editorial_notes: str = ""
 
 
 class ThematicBlogContext(BaseModel):
@@ -43,6 +45,8 @@ class ThematicBlogContext(BaseModel):
     combined_evidence: str = ""
     intake_context: str = ""
     seed_angle: str = ""
+    project_context: str = ""
+    editorial_notes: str = ""
 
 
 def prepare_weekly_context(

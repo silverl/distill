@@ -510,7 +510,7 @@ class VermasParser:
 
         # Extract first paragraph after heading
         lines = content.split("\n")
-        description_lines = []
+        description_lines: list[str] = []
         in_description = False
 
         for line in lines:

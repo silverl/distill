@@ -113,6 +113,37 @@ class TestCodexParserDiscoverSessions:
         assert len(found) == 2
 
 
+class TestCodexParserDateFiltering:
+    """Tests for CodexParser date filtering."""
+
+    @pytest.fixture
+    def parser(self) -> CodexParser:
+        """Create a parser instance."""
+        return CodexParser()
+
+    @pytest.fixture
+    def temp_dir(self) -> Path:
+        """Create a temporary directory for test files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    def test_parse_directory_with_since_filter(self, parser, temp_dir):
+        """Test filtering sessions by date."""
+        from datetime import date
+        import os
+
+        session_file = temp_dir / "old-session.jsonl"
+        entries = [{"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Old"}]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+
+        # Set file mtime to the past
+        old_time = (datetime(2024, 1, 10) - datetime(1970, 1, 1)).total_seconds()
+        os.utime(session_file, (old_time, old_time))
+
+        sessions = parser.parse_directory(temp_dir, since=date(2025, 1, 1))
+        assert sessions == []
+
+
 class TestCodexParserJsonParsing:
     """Tests for CodexParser JSON parsing."""
 
@@ -290,6 +321,153 @@ class TestCodexParserJsonParsing:
         sessions = parser.parse_directory(temp_dir)
         assert len(sessions) == 1
         assert sessions[0].messages[0].content == "Conversation wrapper test"
+
+    def test_parse_json_with_entries_wrapper(self, parser, temp_dir):
+        """Test parsing a .json file with entries wrapper."""
+        session_file = temp_dir / "entries-wrap.json"
+        data = {
+            "entries": [
+                {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Entries wrapper"},
+            ],
+        }
+        session_file.write_text(json.dumps(data))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].messages[0].content == "Entries wrapper"
+
+    def test_parse_skips_non_dict_entries(self, parser, temp_dir):
+        """Test that non-dict entries in JSON array are skipped."""
+        session_file = temp_dir / "mixed.json"
+        data = [
+            "not a dict",
+            42,
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Valid"},
+        ]
+        session_file.write_text(json.dumps(data))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert len(sessions[0].messages) == 1
+
+    def test_parse_message_type_entry(self, parser, temp_dir):
+        """Test processing entries with type='message'."""
+        session_file = temp_dir / "msg-type.jsonl"
+        entries = [
+            {"type": "message", "role": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Message type"},
+            {"type": "message", "role": "assistant", "timestamp": "2024-01-15T10:30:05Z", "content": "Response"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert len(sessions[0].messages) >= 1
+
+    def test_parse_message_type_unknown_role(self, parser, temp_dir):
+        """Test processing 'message' type with custom role."""
+        session_file = temp_dir / "custom-role.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "User msg"},
+            {"type": "message", "role": "system", "timestamp": "2024-01-15T10:30:05Z", "content": "System msg"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+
+    def test_parse_human_ai_type_aliases(self, parser, temp_dir):
+        """Test human/ai type aliases for user/assistant."""
+        session_file = temp_dir / "aliases.jsonl"
+        entries = [
+            {"type": "human", "timestamp": "2024-01-15T10:30:00Z", "content": "Human says"},
+            {"type": "ai", "timestamp": "2024-01-15T10:30:05Z", "content": "AI responds"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert len(sessions[0].messages) == 2
+        assert sessions[0].messages[0].role == "user"
+        assert sessions[0].messages[1].role == "assistant"
+
+    def test_extract_content_text_field(self, parser, temp_dir):
+        """Test extracting content from 'text' field."""
+        session_file = temp_dir / "text-field.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "text": "Text field content"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].messages[0].content == "Text field content"
+
+    def test_message_dict_content_extraction(self, parser, temp_dir):
+        """Test extracting content from message field that is a dict."""
+        session_file = temp_dir / "msg-dict.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z",
+             "message": {"content": "From message dict"}},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].messages[0].content == "From message dict"
+
+    def test_message_string_content(self, parser, temp_dir):
+        """Test extracting content from message field that is a string."""
+        session_file = temp_dir / "msg-str.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z",
+             "message": "Direct string message"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].messages[0].content == "Direct string message"
+
+    def test_metadata_with_invalid_timestamp(self, parser, temp_dir):
+        """Test metadata entry with invalid timestamp doesn't crash."""
+        session_file = temp_dir / "bad-ts-meta.jsonl"
+        entries = [
+            {"session_id": "meta-bad", "model": "gpt-4", "timestamp": "not-a-date"},
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Hello"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+
+    def test_metadata_alternative_field_names(self, parser, temp_dir):
+        """Test metadata with provider and working_directory fields."""
+        session_file = temp_dir / "alt-meta.jsonl"
+        entries = [
+            {"id": "sess-1", "model": "gpt-4", "provider": "azure", "working_directory": "/home/user/proj", "codex_version": "2.0"},
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Hello"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].model_provider == "azure"
+        assert sessions[0].cwd == "/home/user/proj"
+        assert sessions[0].version == "2.0"
+
+    def test_metadata_created_at_timestamp(self, parser, temp_dir):
+        """Test metadata with created_at instead of timestamp."""
+        session_file = temp_dir / "created-at.jsonl"
+        entries = [
+            {"session_id": "ca-sess", "model": "gpt-4", "created_at": "2024-01-15T10:30:00Z"},
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Hello"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].session_id == "ca-sess"
+
+    def test_project_derived_from_cwd(self, parser, temp_dir):
+        """Test that project is derived from cwd directory name."""
+        session_file = temp_dir / "cwd-proj.jsonl"
+        entries = [
+            {"session_id": "s1", "cwd": "/home/user/my-project"},
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Hello"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].project == "my-project"
 
 
 class TestCodexParserTimestampExtraction:
@@ -481,6 +659,91 @@ class TestCodexParserToolUsageTracking:
         assert len(sessions[0].tool_calls) == 1
         assert sessions[0].tool_calls[0].tool_name == "read_file"
         assert sessions[0].tool_calls[0].result is None
+
+    def test_parse_action_observation_types(self, parser, temp_dir):
+        """Test parsing action/observation type entries (alternative names)."""
+        session_file = temp_dir / "action-obs.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Do something"},
+            {"type": "action", "id": "act-1", "name": "run_cmd", "arguments": {"cmd": "ls"}},
+            {"type": "observation", "tool_call_id": "act-1", "result": "file.txt"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert len(sessions[0].tool_calls) == 1
+        assert sessions[0].tool_calls[0].tool_name == "run_cmd"
+        assert sessions[0].tool_calls[0].result == "file.txt"
+
+    def test_tool_result_with_list_content(self, parser, temp_dir):
+        """Test tool result where content is a list (gets stringified)."""
+        session_file = temp_dir / "list-result.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Test"},
+            {"type": "assistant", "timestamp": "2024-01-15T10:30:05Z",
+             "content": [{"type": "tool_use", "id": "t1", "name": "read", "input": {}}]},
+            {"type": "user", "timestamp": "2024-01-15T10:30:10Z",
+             "content": [{"type": "tool_result", "tool_use_id": "t1", "content": ["line1", "line2"]}]},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert len(sessions[0].tool_calls) == 1
+
+    def test_tool_result_output_field(self, parser, temp_dir):
+        """Test tool result using 'output' field instead of 'result'."""
+        session_file = temp_dir / "output-field.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Run"},
+            {"type": "tool_call", "id": "t1", "name": "cmd", "input": {}},
+            {"type": "tool_result", "tool_call_id": "t1", "output": "output text"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].tool_calls[0].result == "output text"
+
+    def test_tool_result_dict_result(self, parser, temp_dir):
+        """Test tool result where result is a dict (gets stringified)."""
+        session_file = temp_dir / "dict-result.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Run"},
+            {"type": "tool_call", "id": "t1", "name": "api", "input": {}},
+            {"type": "tool_result", "tool_call_id": "t1", "result": {"key": "value"}},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert "key" in sessions[0].tool_calls[0].result
+
+    def test_tool_call_alternative_field_names(self, parser, temp_dir):
+        """Test tool call with tool_name and arguments fields."""
+        session_file = temp_dir / "alt-fields.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Run"},
+            {"type": "tool_call", "tool_call_id": "t1", "tool_name": "exec", "arguments": {"cmd": "ls"}},
+            {"type": "tool_result", "tool_call_id": "t1", "content": "result"},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].tool_calls[0].tool_name == "exec"
+
+    def test_tool_use_result_with_duration_ms(self, parser, temp_dir):
+        """Test tool result with toolUseResult metadata containing durationMs."""
+        session_file = temp_dir / "duration-ms.jsonl"
+        entries = [
+            {"type": "user", "timestamp": "2024-01-15T10:30:00Z", "content": "Test"},
+            {"type": "assistant", "timestamp": "2024-01-15T10:30:05Z",
+             "content": [{"type": "tool_use", "id": "t1", "name": "exec", "input": {}}]},
+            {"type": "user", "timestamp": "2024-01-15T10:30:10Z",
+             "toolUseResult": {"durationMs": 150},
+             "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "done"}]},
+        ]
+        session_file.write_text("\n".join(json.dumps(e) for e in entries))
+        sessions = parser.parse_directory(temp_dir)
+        assert len(sessions) == 1
+        assert sessions[0].tool_calls[0].duration_ms == 150
 
 
 class TestCodexParserErrorHandling:

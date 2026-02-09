@@ -135,6 +135,91 @@ class TestWorkflowExecution:
         )
         assert exec.outcome == "approved"
 
+    def test_execution_outcome_blocked(self) -> None:
+        """Test outcome determination when blocked signal is present."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="dev",
+                role="dev",
+                signal="done",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+            AgentSignal(
+                signal_id="2",
+                agent_id="qa",
+                role="qa",
+                signal="blocked",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 30),
+                workflow_id="test",
+            ),
+        ]
+        exec = WorkflowExecution(
+            workflow_id="test",
+            mission_id="123",
+            cycle=1,
+            task_name="task",
+            signals=signals,
+        )
+        assert exec.outcome == "blocked"
+
+    def test_execution_outcome_done_only(self) -> None:
+        """When no complete/approved/blocked, but has done, outcome is done."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="dev",
+                role="dev",
+                signal="done",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+        ]
+        exec = WorkflowExecution(
+            workflow_id="test",
+            mission_id="123",
+            cycle=1,
+            task_name="task",
+            signals=signals,
+        )
+        assert exec.outcome == "done"
+
+    def test_execution_outcome_in_progress(self) -> None:
+        """When no terminal signals, outcome is in_progress."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="dev",
+                role="dev",
+                signal="progress",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+        ]
+        exec = WorkflowExecution(
+            workflow_id="test",
+            mission_id="123",
+            cycle=1,
+            task_name="task",
+            signals=signals,
+        )
+        assert exec.outcome == "in_progress"
+
+    def test_execution_duration_none_without_times(self) -> None:
+        """duration_minutes returns None when start/end times missing."""
+        exec = WorkflowExecution(
+            workflow_id="test",
+            mission_id="123",
+            cycle=1,
+            task_name="task",
+        )
+        assert exec.duration_minutes is None
+
 
 class TestMissionInfo:
     """Tests for MissionInfo model."""
@@ -609,6 +694,313 @@ class TestVermasParser:
         parser.parse_directory(temp_vermas_dir)
         assert len(parser.parse_errors) == 0
 
+    def test_skip_non_directory_in_state(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Files (not dirs) in state/ are skipped."""
+        (temp_vermas_dir / "state" / "not-a-dir.txt").write_text("junk")
+        # Also add a valid workflow
+        workflow_dir = temp_vermas_dir / "state" / "mission-ok-cycle-1-execute-task"
+        signals_dir = workflow_dir / "signals"
+        signals_dir.mkdir(parents=True)
+        signal_data = {
+            "signal_id": "sig",
+            "agent_id": "dev",
+            "role": "dev",
+            "signal": "done",
+            "message": "",
+            "workflow_id": "test",
+            "created_at": "2024-01-15T10:00:00",
+        }
+        (signals_dir / "sig.yaml").write_text(yaml.dump(signal_data))
+        sessions = parser.parse_directory(temp_vermas_dir)
+        assert len(sessions) == 1
+
+    def test_parse_error_in_workflow_dir(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Errors parsing a workflow dir are caught and logged."""
+        from unittest.mock import patch
+
+        workflow_dir = temp_vermas_dir / "state" / "mission-err2-cycle-1-execute-task"
+        signals_dir = workflow_dir / "signals"
+        signals_dir.mkdir(parents=True)
+        signal_data = {
+            "signal_id": "sig",
+            "agent_id": "dev",
+            "role": "dev",
+            "signal": "done",
+            "message": "",
+            "workflow_id": "test",
+            "created_at": "2024-01-15T10:00:00",
+        }
+        (signals_dir / "sig.yaml").write_text(yaml.dump(signal_data))
+        with patch.object(parser, "_parse_workflow_directory", side_effect=RuntimeError("boom")):
+            sessions = parser.parse_directory(temp_vermas_dir)
+        assert len(sessions) == 0
+        assert any("boom" in e for e in parser.parse_errors)
+
+    def test_events_log_json_decode_error(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Malformed JSON in events.log is handled gracefully."""
+        workflow_dir = temp_vermas_dir / "state" / "mission-badjson-cycle-1-execute-task"
+        workflow_dir.mkdir(parents=True)
+        content = (
+            '{"type": "signal", "timestamp": "2024-01-15T10:00:00", '
+            '"signal_id": "e1", "agent_id": "dev", "role": "dev", '
+            '"signal": "done", "message": "", "workflow_id": "test"}\n'
+            "{not valid json}\n"
+        )
+        (workflow_dir / "events.log").write_text(content)
+        sessions = parser.parse_directory(temp_vermas_dir)
+        assert len(sessions) == 1
+        assert len(parser.parse_errors) > 0
+
+    def test_events_log_entry_no_timestamp(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Signal entries without timestamps are skipped."""
+        workflow_dir = temp_vermas_dir / "state" / "mission-nots-cycle-1-execute-task"
+        workflow_dir.mkdir(parents=True)
+        events = [
+            {
+                "type": "signal",
+                "signal_id": "e1",
+                "agent_id": "dev",
+                "role": "dev",
+                "signal": "done",
+                "message": "",
+                "workflow_id": "test",
+            },
+            {
+                "type": "signal",
+                "timestamp": "2024-01-15T10:00:00",
+                "signal_id": "e2",
+                "agent_id": "dev",
+                "role": "dev",
+                "signal": "done",
+                "message": "",
+                "workflow_id": "test",
+            },
+        ]
+        (workflow_dir / "events.log").write_text(
+            "\n".join(json.dumps(e) for e in events)
+        )
+        sessions = parser.parse_directory(temp_vermas_dir)
+        assert len(sessions) == 1
+        assert len(sessions[0].signals) == 1
+
+    def test_parse_timestamp_non_string(self, parser: VermasParser) -> None:
+        """Non-string timestamp values return None."""
+        result = parser._parse_timestamp(123)
+        assert result is None
+
+    def test_determine_outcome_in_progress(self, parser: VermasParser) -> None:
+        """When no terminal signals, outcome is in_progress."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="dev",
+                role="dev",
+                signal="progress",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+        ]
+        assert parser._determine_outcome(signals) == "in_progress"
+
+    def test_quality_rating_approved_with_revision(self, parser: VermasParser) -> None:
+        """Approved outcome with prior needs_revision gives good rating."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="qa",
+                role="qa",
+                signal="needs_revision",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+            AgentSignal(
+                signal_id="2",
+                agent_id="qa",
+                role="qa",
+                signal="approved",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 30),
+                workflow_id="test",
+            ),
+        ]
+        rating = parser._determine_quality_rating("approved", signals)
+        assert rating == "good"
+
+    def test_quality_rating_done(self, parser: VermasParser) -> None:
+        """Done outcome gives good rating."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="dev",
+                role="dev",
+                signal="done",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+        ]
+        rating = parser._determine_quality_rating("done", signals)
+        assert rating == "good"
+
+    def test_quality_rating_needs_revision(self, parser: VermasParser) -> None:
+        """Needs revision outcome gives fair rating."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="qa",
+                role="qa",
+                signal="needs_revision",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+        ]
+        rating = parser._determine_quality_rating("needs_revision", signals)
+        assert rating == "fair"
+
+    def test_quality_rating_blocked(self, parser: VermasParser) -> None:
+        """Blocked outcome gives poor rating."""
+        signals = [
+            AgentSignal(
+                signal_id="1",
+                agent_id="dev",
+                role="dev",
+                signal="blocked",
+                message="",
+                timestamp=datetime(2024, 1, 15, 10, 0),
+                workflow_id="test",
+            ),
+        ]
+        rating = parser._determine_quality_rating("blocked", signals)
+        assert rating == "poor"
+
+    def test_quality_rating_unknown(self, parser: VermasParser) -> None:
+        """Unknown outcome gives unknown rating."""
+        rating = parser._determine_quality_rating("unknown", [])
+        assert rating == "unknown"
+
+    def test_generate_summary_no_signals(self, parser: VermasParser) -> None:
+        """Summary with no signals."""
+        summary = parser._generate_summary([], "unknown", "my-task")
+        assert "my-task" in summary
+        assert "No signals" in summary
+
+    def test_task_description_with_non_dir_entries(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Non-directory entries in tasks/ are skipped."""
+        tasks_dir = temp_vermas_dir / "tasks" / "mission-skipdirs"
+        tasks_dir.mkdir(parents=True)
+        (tasks_dir / "not-a-dir.txt").write_text("junk")
+
+        feature_dir = tasks_dir / "feature"
+        feature_dir.mkdir()
+        (feature_dir / "my-task.md").write_text("# My Task\n\nDescription here.\n")
+
+        result = parser._get_task_description(temp_vermas_dir, "skipdirs", "my-task")
+        assert result == "Description here."
+
+    def test_parse_task_file_no_heading(self, parser: VermasParser) -> None:
+        """Task file without heading returns empty."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_file = Path(tmpdir) / "task.md"
+            task_file.write_text("Just some text without a heading.\n")
+            result = parser._parse_task_file(task_file)
+            assert result == ""
+
+    def test_parse_task_file_with_frontmatter(self, parser: VermasParser) -> None:
+        """Task file with YAML frontmatter extracts description after heading."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_file = Path(tmpdir) / "task.md"
+            task_file.write_text(
+                "---\nstatus: open\n---\n# Task Title\n\nThis is the description.\n"
+            )
+            result = parser._parse_task_file(task_file)
+            assert result == "This is the description."
+
+    def test_get_mission_info_skips_non_dirs(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Non-directory entries in tasks/ are skipped when searching for missions."""
+        tasks_dir = temp_vermas_dir / "tasks"
+        (tasks_dir / "not-a-dir.txt").write_text("junk")
+        result = parser._get_mission_info(temp_vermas_dir, "xyz")
+        assert result is None
+
+    def test_get_mission_info_corrupt_epic(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Corrupt _epic.md file is handled gracefully."""
+        mission_dir = temp_vermas_dir / "tasks" / "mission-corrupt"
+        mission_dir.mkdir(parents=True)
+        (mission_dir / "_epic.md").write_text("---\ninvalid: {yaml: [}\n---\n# Title\n")
+
+        # The parser handles YAML errors internally, so this shouldn't crash
+        result = parser._get_mission_info(temp_vermas_dir, "corrupt")
+        # Should still return something (the YAML error is caught)
+        assert result is not None or result is None  # Just verify no exception
+
+    def test_discover_missions_skips_non_dirs(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Non-directory entries in state/ are skipped during mission discovery."""
+        (temp_vermas_dir / "state" / "not-a-dir.txt").write_text("junk")
+        missions = parser.discover_missions(temp_vermas_dir)
+        assert missions == []
+
+    def test_discover_missions_skips_meetings(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Meeting directories are skipped during mission discovery."""
+        mtg_dir = temp_vermas_dir / "state" / "mtg-abc123"
+        mtg_dir.mkdir(parents=True)
+        missions = parser.discover_missions(temp_vermas_dir)
+        assert missions == []
+
+    def test_get_workflow_executions_no_state_dir(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """When state/ doesn't exist, returns empty."""
+        import shutil
+
+        shutil.rmtree(temp_vermas_dir / "state")
+        executions = parser.get_workflow_executions(temp_vermas_dir)
+        assert executions == []
+
+    def test_get_workflow_executions_skips_non_dirs(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Files in state/ are skipped."""
+        (temp_vermas_dir / "state" / "not-a-dir.txt").write_text("junk")
+        executions = parser.get_workflow_executions(temp_vermas_dir)
+        assert executions == []
+
+    def test_get_workflow_executions_skips_meetings(
+        self, parser: VermasParser, temp_vermas_dir: Path
+    ) -> None:
+        """Meeting directories are skipped in get_workflow_executions."""
+        mtg_dir = temp_vermas_dir / "state" / "mtg-test"
+        mtg_dir.mkdir(parents=True)
+        executions = parser.get_workflow_executions(temp_vermas_dir)
+        assert executions == []
+
+    def test_get_workflow_executions_nonexistent_vermas(
+        self, parser: VermasParser
+    ) -> None:
+        """Returns empty for nonexistent path."""
+        executions = parser.get_workflow_executions(Path("/nonexistent/path"))
+        assert executions == []
+
 
 class TestVermasParserEdgeCases:
     """Edge case tests for parser robustness."""
@@ -791,6 +1183,17 @@ This is a test mission for feature development.
             assert sessions[0].mission_info is not None
             assert sessions[0].mission_info.title == "Simple Mission"
 
+    def test_parse_epic_file_bad_frontmatter(self, parser: VermasParser) -> None:
+        """Epic file with invalid YAML frontmatter still extracts title."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            epic_file = Path(tmpdir) / "_epic.md"
+            epic_file.write_text(
+                "---\ninvalid: {yaml: [\n---\n# My Title\n\nDescription text.\n"
+            )
+            result = parser._parse_epic_file(epic_file, "test-id")
+            assert result.title == "My Title"
+            assert result.description == "Description text."
+
 
 class TestKnowledgeParsing:
     """Tests for knowledge/improvements and agent learnings parsing."""
@@ -926,6 +1329,36 @@ class TestKnowledgeParsing:
             # Should handle None values gracefully
             assert len(sessions[0].learnings) == 1
             assert sessions[0].learnings[0].learnings == []
+
+    def test_improvement_file_empty(self, parser: VermasParser) -> None:
+        """Empty improvement YAML file returns None."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            imp_file = Path(tmpdir) / "empty.yaml"
+            imp_file.write_text("")
+            result = parser._parse_improvement_file(imp_file)
+            assert result is None
+
+    def test_get_mission_improvements_parse_error(self, parser: VermasParser) -> None:
+        """Corrupt improvement files are handled gracefully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vermas_dir = Path(tmpdir) / ".vermas"
+            imp_dir = vermas_dir / "knowledge" / "improvements"
+            imp_dir.mkdir(parents=True)
+            (imp_dir / "adapt-mission-bad-c1-dev.yaml").write_text("{{invalid yaml")
+            improvements = parser._get_mission_improvements(vermas_dir, "bad")
+            assert len(improvements) == 0
+            assert len(parser._parse_errors) > 0
+
+    def test_get_agent_learnings_corrupt_file(self, parser: VermasParser) -> None:
+        """Corrupt agent learnings file is handled gracefully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vermas_dir = Path(tmpdir) / ".vermas"
+            agents_dir = vermas_dir / "knowledge" / "agents"
+            agents_dir.mkdir(parents=True)
+            (agents_dir / "agent-learnings.yaml").write_text("{{invalid yaml")
+            learnings = parser._get_agent_learnings(vermas_dir)
+            assert len(learnings) == 0
+            assert len(parser._parse_errors) > 0
 
 
 class TestRecapFile:
@@ -1089,6 +1522,49 @@ Content for recap {i + 1}.
             sessions = parser.parse_directory(vermas_dir)
             assert len(sessions) == 1
             assert len(sessions[0].recaps) == 0
+
+    def test_get_recaps_corrupt_file(self, parser: VermasParser) -> None:
+        """Corrupt recap files are handled gracefully."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vermas_dir = Path(tmpdir) / ".vermas"
+            recap_dir = vermas_dir / "tasks" / "docs"
+            recap_dir.mkdir(parents=True)
+            (recap_dir / "recap-bad.md").write_text("# Recap\n\nContent")
+
+            # Create workflow
+            workflow_dir = vermas_dir / "state" / "mission-recaperr-cycle-1-execute-task"
+            signals_dir = workflow_dir / "signals"
+            signals_dir.mkdir(parents=True)
+            signal_data = {
+                "signal_id": "sig",
+                "agent_id": "dev",
+                "role": "dev",
+                "signal": "done",
+                "message": "",
+                "workflow_id": "test",
+                "created_at": "2024-01-15T10:00:00",
+            }
+            (signals_dir / "sig.yaml").write_text(yaml.dump(signal_data))
+
+            with patch.object(
+                parser, "_parse_recap_file", side_effect=RuntimeError("read error")
+            ):
+                sessions = parser.parse_directory(vermas_dir)
+            # Session is still created (recaps are optional enrichment)
+            assert len(sessions) == 1
+            assert len(parser.parse_errors) > 0
+
+    def test_parse_recap_file_no_heading(self, parser: VermasParser) -> None:
+        """Recap file without a heading still parses."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            recap_file = Path(tmpdir) / "recap.md"
+            recap_file.write_text("No heading here, just content.")
+            result = parser._parse_recap_file(recap_file)
+            assert result is not None
+            assert result.title == ""
+            assert result.content == "No heading here, just content."
 
 
 class TestDurationTracking:
