@@ -12,6 +12,7 @@ def create_publisher(
     *,
     synthesizer: BlogSynthesizer | None = None,
     ghost_config: GhostConfig | None = None,
+    postiz_config: object | None = None,
 ) -> BlogPublisher:
     """Create a publisher for the given platform.
 
@@ -19,6 +20,7 @@ def create_publisher(
         platform: The target platform.
         synthesizer: Required for social publishers that need LLM re-synthesis.
         ghost_config: Optional Ghost CMS configuration for live publishing.
+        postiz_config: Optional PostizConfig for scheduling and API settings.
 
     Returns:
         A BlogPublisher instance for the platform.
@@ -33,11 +35,15 @@ def create_publisher(
     from distill.blog.publishers.linkedin import LinkedInPublisher
     from distill.blog.publishers.markdown import MarkdownPublisher
     from distill.blog.publishers.obsidian import ObsidianPublisher
+    from distill.blog.publishers.postiz import PostizBlogPublisher
     from distill.blog.publishers.reddit import RedditPublisher
     from distill.blog.publishers.twitter import TwitterPublisher
 
     if platform == Platform.GHOST:
         return GhostPublisher(ghost_config=ghost_config)
+
+    if platform == Platform.POSTIZ:
+        return PostizBlogPublisher(synthesizer=synthesizer, postiz_config=postiz_config)
 
     file_publishers: dict[Platform, type[BlogPublisher]] = {
         Platform.OBSIDIAN: ObsidianPublisher,

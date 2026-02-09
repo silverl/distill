@@ -1331,6 +1331,8 @@ def run_cmd(
     """
     from datetime import timedelta
 
+    from distill.errors import PipelineReport, save_report
+
     platform_names = [p.strip() for p in publish.split(",")] if publish else ["obsidian"]
 
     # Build Ghost config
@@ -1345,6 +1347,7 @@ def run_cmd(
 
     all_written: list[Path] = []
     errors: list[str] = []
+    report = PipelineReport()
 
     # Delta window: only parse sessions from the --since date or last 2 days
     if force:
@@ -1383,13 +1386,18 @@ def run_cmd(
                     force=force,
                     dry_run=dry_run,
                     model=model,
+                    report=report,
                 )
                 all_written.extend(written)
+                report.items_processed["journal"] = len(written)
+                report.mark_stage_complete("journal")
                 console.print(f"  [green]Generated {len(written)} journal entry/entries[/green]")
             else:
                 console.print("  [yellow]No sessions found[/yellow]")
+                report.mark_stage_complete("journal")
         except Exception as exc:
             errors.append(f"Sessions/journal: {exc}")
+            report.add_error("journal", str(exc), error_type="stage_error", recoverable=True)
             console.print(f"  [red]Error: {exc}[/red]")
     else:
         console.print("[dim]Step 1/3: Sessions → Journal (skipped)[/dim]")
@@ -1416,11 +1424,15 @@ def run_cmd(
                 include_sessions=not skip_sessions,
                 session_dirs=[str(directory)],
                 global_sessions=include_global,
+                report=report,
             )
             all_written.extend(written)
+            report.items_processed["intake"] = len(written)
+            report.mark_stage_complete("intake")
             console.print(f"  [green]Generated {len(written)} intake output(s)[/green]")
         except Exception as exc:
             errors.append(f"Intake: {exc}")
+            report.add_error("intake", str(exc), error_type="stage_error", recoverable=True)
             console.print(f"  [red]Error: {exc}[/red]")
     else:
         console.print("[dim]Step 2/3: Intake → Digest (skipped)[/dim]")
@@ -1438,11 +1450,15 @@ def run_cmd(
                     model=model,
                     platforms=platform_names,
                     ghost_config=ghost_cfg,
+                    report=report,
                 )
                 all_written.extend(written)
+                report.items_processed["blog"] = len(written)
+                report.mark_stage_complete("blog")
                 console.print(f"  [green]Generated {len(written)} blog post(s)[/green]")
             except Exception as exc:
                 errors.append(f"Blog: {exc}")
+                report.add_error("blog", str(exc), error_type="stage_error", recoverable=True)
                 console.print(f"  [red]Error: {exc}[/red]")
         else:
             console.print("  [yellow]No journal entries yet — skipping blog[/yellow]")
@@ -1460,6 +1476,22 @@ def run_cmd(
         except Exception:
             pass
 
+    # Finalize and save report
+    report.outputs_written = [str(p) for p in all_written]
+    report.finish()
+    if not dry_run:
+        with contextlib.suppress(Exception):
+            save_report(report, output)
+
+        # Send notifications if configured
+        with contextlib.suppress(Exception):
+            from distill.config import load_config
+            from distill.notifications import send_notification
+
+            cfg = load_config()
+            if cfg.notifications.is_configured:
+                send_notification(cfg.notifications, report)
+
     # Summary
     console.print()
     if errors:
@@ -1470,6 +1502,140 @@ def run_cmd(
         console.print("[bold green]Pipeline complete![/bold green]")
     console.print(f"  Total outputs: {len(all_written)}")
     console.print(f"  Output directory: {output}")
+
+
+@app.command(name="status")
+def status_cmd(
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output directory to inspect.",
+        ),
+    ] = Path("./insights"),
+) -> None:
+    """Show the current state of the distill pipeline.
+
+    Displays last run info, journal/blog/intake counts, memory stats,
+    content store size, and configured source status.
+    """
+    from distill.errors import load_report
+    from distill.memory import MEMORY_FILENAME
+
+    # Last run report
+    report = load_report(output)
+    if report:
+        ago = ""
+        if report.finished_at:
+            delta = datetime.now() - report.finished_at
+            hours = int(delta.total_seconds() / 3600)
+            if hours < 1:
+                mins = int(delta.total_seconds() / 60)
+                ago = f" ({mins}m ago)"
+            else:
+                ago = f" ({hours}h ago)"
+            finished_str = report.finished_at.strftime("%Y-%m-%d %H:%M")
+        else:
+            finished_str = report.started_at.strftime("%Y-%m-%d %H:%M")
+        err_count = report.error_count
+        console.print(f"Last run: {finished_str}{ago} — {err_count} error(s)")
+    else:
+        console.print("Last run: [dim]no runs recorded[/dim]")
+
+    console.print()
+
+    # Journal entries
+    journal_dir = output / "journal"
+    if journal_dir.exists():
+        journal_files = list(journal_dir.glob("**/*.md"))
+        latest = ""
+        if journal_files:
+            newest = max(journal_files, key=lambda p: p.stat().st_mtime)
+            latest = f" (latest: {newest.stem})"
+        console.print(f"Journal: {len(journal_files)} entries{latest}")
+    else:
+        console.print("Journal: [dim]no entries[/dim]")
+
+    # Blog posts
+    blog_dir = output / "blog"
+    if blog_dir.exists():
+        weekly_count = len(list(blog_dir.glob("**/weekly-*.md")))
+        thematic_count = len(list(blog_dir.glob("**/*.md"))) - weekly_count
+        if thematic_count < 0:
+            thematic_count = 0
+        console.print(f"Blog:    {weekly_count} weekly + {thematic_count} thematic posts")
+    else:
+        console.print("Blog:    [dim]no posts[/dim]")
+
+    # Intake
+    intake_dir = output / "intake"
+    if intake_dir.exists():
+        intake_files = list(intake_dir.glob("**/*.md"))
+        latest = ""
+        if intake_files:
+            newest = max(intake_files, key=lambda p: p.stat().st_mtime)
+            latest = f" (latest: {newest.stem})"
+        console.print(f"Intake:  {len(intake_files)} items{latest}")
+    else:
+        console.print("Intake:  [dim]no items[/dim]")
+
+    # Memory
+    memory_path = output / MEMORY_FILENAME
+    if memory_path.exists():
+        try:
+            import json as _json
+
+            data = _json.loads(memory_path.read_text(encoding="utf-8"))
+            entries = len(data.get("entries", []))
+            threads = len(data.get("threads", []))
+            entities = len(data.get("entities", {}))
+            console.print(f"Memory:  {entries} entries, {threads} threads, {entities} entities")
+        except (ValueError, KeyError):
+            console.print("Memory:  [dim]corrupt[/dim]")
+    else:
+        console.print("Memory:  [dim]not initialized[/dim]")
+
+    # Content store
+    from distill.store import JSON_STORE_FILENAME
+
+    store_path = output / JSON_STORE_FILENAME
+    if store_path.exists():
+        try:
+            data = json.loads(store_path.read_text(encoding="utf-8"))
+            count = len(data.get("items", []))
+            console.print(f"Store:   {count} items embedded")
+        except (ValueError, KeyError):
+            console.print("Store:   [dim]corrupt[/dim]")
+    else:
+        console.print("Store:   [dim]empty[/dim]")
+
+    # Configured sources
+    source_checks = {
+        "rss": (output / "intake" / "default_feeds.txt").exists()
+        or Path(__file__).parent.joinpath("intake", "default_feeds.txt").exists(),
+        "browser": True,  # always locally available
+        "substack": False,
+    }
+    # Check config for more sources
+    from distill.config import load_config
+
+    with contextlib.suppress(Exception):
+        cfg = load_config()
+        if cfg.intake.substack_blogs:
+            source_checks["substack"] = True
+        if cfg.reddit.client_id:
+            source_checks["reddit"] = True
+        if cfg.youtube.api_key:
+            source_checks["youtube"] = True
+        if cfg.ghost.url:
+            source_checks["ghost"] = True
+
+    parts = []
+    for name, configured in source_checks.items():
+        mark = "[green]✓[/green]" if configured else "[dim]✗[/dim]"
+        parts.append(f"{name} {mark}")
+    console.print(f"Sources: {', '.join(parts)}")
 
 
 @app.command(name="seed")

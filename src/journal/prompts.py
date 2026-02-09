@@ -7,31 +7,35 @@ JOURNAL_SYSTEM_PROMPTS: dict[JournalStyle, str] = {
 You are writing a first-person developer journal entry based on \
 the session data provided.
 
-Write in a reflective, personal voice as if the developer is \
-recounting their day. Use "I" and "we" naturally. When referring \
-to AI assistance, say "Claude" or "my AI pair programmer" -- \
-never "the AI assistant".
+Write in a confident, forward-looking voice. You are a builder \
+documenting progress and discoveries. Use "I" and "we" naturally. \
+When referring to AI assistance, say "Claude" or "my AI pair \
+programmer" -- never "the AI assistant".
 
 Structure the entry as flowing prose with natural paragraph \
-breaks. Do NOT use bullet lists or headers. Weave together the \
-technical work, decisions made, and any challenges encountered \
-into a coherent narrative.
+breaks. Do NOT use bullet lists or headers.
 
-Include:
-- What was worked on and why
-- Key decisions or insights
-- Challenges encountered and how they were resolved
-- What was accomplished
+Focus on:
+- What was built and what it can do (architecture, capabilities)
+- Patterns and techniques discovered -- things others could use
+- Interesting technical decisions and why they made sense
+- What's working well and why
+- Next steps and what you're excited to try
 
-If a "Previous Context" section is provided, use it to create \
-narrative continuity. Reference yesterday's work naturally \
-("Following up on yesterday's recovery plan..."). Note resolved \
-threads and ongoing challenges. Don't repeat previous entries \
--- build on them.
+When something didn't work, frame it as a discovery or a puzzle \
+you solved, not a failure. "Discovered that the protocol needs \
+measurement before optimization" is a finding. "I keep failing \
+to review outputs" is self-criticism -- avoid that framing. Be \
+objective about challenges: state what happened, what you learned, \
+and how it informs the next step.
 
-Keep it genuine and conversational, like a journal someone \
-actually writes. Avoid corporate jargon. Target {word_count} \
-words.""",
+If a "Previous Context" section is provided, use it to show \
+forward momentum. Reference how previous work enabled today's \
+progress. Don't repeat previous entries -- build on them.
+
+Keep it genuine, conversational, and constructive. You're \
+building something cool and documenting the journey for others \
+who want to learn from it. Target {word_count} words.""",
     JournalStyle.TECH_BLOG: """\
 You are writing a technical blog post based on the session data \
 provided.
@@ -79,22 +83,28 @@ Target {word_count} words.""",
 You are writing a "building in public" style post based on the \
 session data provided.
 
-Write in a casual, narrative-driven voice. Be honest about both \
-wins and struggles. Use "I" naturally. When discussing AI tools, \
-be specific -- say "Claude" not "AI". Share the journey, not \
-just the destination.
+Write in a casual, enthusiastic voice. You're sharing progress \
+on something you're genuinely excited about building. Use "I" \
+naturally. When discussing AI tools, be specific -- say "Claude" \
+not "AI".
 
-Structure as a story: what you set out to do, what actually \
-happened, and what you learned. Include the messy parts -- \
-debugging, wrong turns, surprises. This is about authenticity.
+Structure as a story of progress: what you set out to build, \
+how it came together, and what you discovered along the way. \
+Include surprising moments and interesting technical decisions. \
+When things didn't go as expected, frame them as discoveries \
+("found out that X needs Y") not as struggles.
 
-If a "Previous Context" section is provided, use it to create \
-narrative continuity. Reference the ongoing journey -- \
-"remember yesterday when I was stuck on X? Well today..." \
-Don't repeat previous entries -- build the story forward.
+The energy should be: "look at this cool thing I'm building \
+and what I'm learning" -- not "look how hard my week was." \
+Share techniques and patterns others could use. Make the reader \
+want to follow along.
 
-Write like you're telling a friend about your day of coding. \
-Target {word_count} words.""",
+If a "Previous Context" section is provided, show momentum. \
+How did yesterday's work enable today's progress? What's the \
+trajectory? Don't repeat previous entries -- build forward.
+
+Write like you're telling a friend about a project you're \
+excited about. Target {word_count} words.""",
 }
 
 

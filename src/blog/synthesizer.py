@@ -89,7 +89,9 @@ class BlogSynthesizer:
             BlogSynthesisError: If the CLI call fails.
             KeyError: If platform is not in SOCIAL_PROMPTS.
         """
-        system_prompt = SOCIAL_PROMPTS[platform]
+        # Map Postiz provider names to prompt keys (e.g. "x" → "twitter")
+        prompt_key = {"x": "twitter"}.get(platform, platform)
+        system_prompt = SOCIAL_PROMPTS[prompt_key]
         return self._call_claude(system_prompt, prose, f"adapt-{platform}-{slug}")
 
     def extract_blog_memory(

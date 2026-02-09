@@ -11,6 +11,7 @@ class BlogPostType(StrEnum):
 
     WEEKLY = "weekly"
     THEMATIC = "thematic"
+    READING_LIST = "reading-list"
 
 
 class Platform(StrEnum):
@@ -22,6 +23,7 @@ class Platform(StrEnum):
     TWITTER = "twitter"
     LINKEDIN = "linkedin"
     REDDIT = "reddit"
+    POSTIZ = "postiz"
 
 
 class GhostConfig(BaseModel):

@@ -219,6 +219,73 @@ def themes_from_seeds(seeds: list[object]) -> list[ThemeDefinition]:
     return themes
 
 
+def detect_series_candidates(
+    entries: list[JournalEntry],
+    memory: object,
+    state: object,
+) -> list[ThemeDefinition]:
+    """Find series-worthy topics from memory threads and entities.
+
+    Looks for threads with high mention counts and entities with high
+    frequency that haven't been blogged yet.
+
+    Args:
+        entries: Journal entries.
+        memory: UnifiedMemory instance.
+        state: BlogState instance.
+
+    Returns:
+        List of ThemeDefinition objects for series candidates.
+    """
+    from distill.blog.state import BlogState
+    from distill.memory import UnifiedMemory
+
+    if not isinstance(memory, UnifiedMemory) or not isinstance(state, BlogState):
+        return []
+
+    candidates: list[ThemeDefinition] = []
+
+    # Series from threads with mention_count >= 3
+    for thread in memory.threads:
+        if thread.status != "active":
+            continue
+        if thread.mention_count < 3:
+            continue
+        slug = f"series-{thread.name.lower().replace(' ', '-')}"
+        if state.is_generated(slug):
+            continue
+        candidates.append(
+            ThemeDefinition(
+                slug=slug,
+                title=f"Series: {thread.name}",
+                description=thread.summary,
+                keywords=[thread.name.lower()],
+                thread_patterns=[thread.name.lower()],
+                min_evidence_days=2,
+            )
+        )
+
+    # Series from entities with mention_count >= 5
+    for _key, entity in memory.entities.items():
+        if entity.mention_count < 5:
+            continue
+        slug = f"series-{entity.name.lower().replace(' ', '-')}"
+        if state.is_generated(slug):
+            continue
+        candidates.append(
+            ThemeDefinition(
+                slug=slug,
+                title=f"Deep Dive: {entity.name}",
+                description=f"Extended exploration of {entity.name} ({entity.entity_type})",
+                keywords=[entity.name.lower()],
+                thread_patterns=[entity.name.lower()],
+                min_evidence_days=2,
+            )
+        )
+
+    return candidates
+
+
 def _entry_matches_theme(entry: JournalEntry, theme: ThemeDefinition) -> bool:
     """Check if a journal entry matches a theme via keywords or patterns."""
     prose_lower = entry.prose.lower()

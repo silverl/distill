@@ -1,0 +1,194 @@
+# Postiz local instance for distill social publishing.
+#
+# Ports 6100-6106 (sequential, avoids conflicts with other local services).
+#
+# Quick start:
+#   ./scripts/setup.sh          # full automated setup (recommended)
+#   open https://localhost:6106  # Postiz UI (HTTPS via Caddy)
+#
+# Manual start:
+#   cd docker/postiz && docker compose up -d
+#
+# Default login (created by setup script):
+#   Email:    distill@local.dev
+#   Password: distill123
+
+services:
+  distill-postiz:
+    image: distill-postiz-patched:latest  # patched from ghcr.io/gitroomhq/postiz-app:latest (reduced LinkedIn scopes)
+    container_name: distill-postiz
+    restart: unless-stopped
+    environment:
+      MAIN_URL: "https://localhost:6106"
+      FRONTEND_URL: "https://localhost:6106"
+      NEXT_PUBLIC_BACKEND_URL: "https://localhost:6106/api"
+      JWT_SECRET: "distill-dev-jwt-secret-change-in-production"
+      DATABASE_URL: "postgresql://postiz:postiz@distill-postiz-pg:5432/postiz"
+      REDIS_URL: "redis://distill-postiz-redis:6379"
+      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      TEMPORAL_ADDRESS: "distill-temporal:7233"
+      IS_GENERAL: "true"
+      DISABLE_REGISTRATION: "false"
+      RUN_CRON: "true"
+      STORAGE_PROVIDER: "local"
+      UPLOAD_DIRECTORY: "/uploads"
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
+      NX_ADD_PLUGINS: "false"
+      API_LIMIT: 30
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      # Social platform keys — set in .env, then restart: docker compose up -d
+      X_API_KEY: "${X_API_KEY:-}"
+      X_API_SECRET: "${X_API_SECRET:-}"
+      LINKEDIN_CLIENT_ID: "${LINKEDIN_CLIENT_ID:-}"
+      LINKEDIN_CLIENT_SECRET: "${LINKEDIN_CLIENT_SECRET:-}"
+      REDDIT_CLIENT_ID: "${REDDIT_CLIENT_ID:-}"
+      REDDIT_CLIENT_SECRET: "${REDDIT_CLIENT_SECRET:-}"
+      SLACK_ID: "${SLACK_ID:-}"
+      SLACK_SECRET: "${SLACK_SECRET:-}"
+      SLACK_SIGNING_SECRET: "${SLACK_SIGNING_SECRET:-}"
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    ports:
+      - "6100:5000"
+      - "6106:6106"
+    networks:
+      - distill-postiz
+      - distill-temporal
+    depends_on:
+      distill-postiz-pg:
+        condition: service_healthy
+      distill-postiz-redis:
+        condition: service_healthy
+
+  distill-postiz-pg:
+    image: postgres:17-alpine
+    container_name: distill-postiz-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postiz
+      POSTGRES_USER: postiz
+      POSTGRES_DB: postiz
+    volumes:
+      - postiz-pg-data:/var/lib/postgresql/data
+    ports:
+      - "6101:5432"
+    networks:
+      - distill-postiz
+    healthcheck:
+      test: pg_isready -U postiz -d postiz
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  distill-postiz-redis:
+    image: redis:7.2
+    container_name: distill-postiz-redis
+    restart: unless-stopped
+    ports:
+      - "6102:6379"
+    networks:
+      - distill-postiz
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - postiz-redis-data:/data
+
+  distill-opensearch:
+    container_name: distill-opensearch
+    platform: linux/amd64
+    image: opensearchproject/opensearch:2.12.0
+    environment:
+      - cluster.name=distill-opensearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - plugins.security.disabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Distill_0s_C00l!
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "6103:9200"
+    networks:
+      - distill-temporal
+    healthcheck:
+      test: curl -sf http://localhost:9200/_cluster/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  distill-temporal-pg:
+    container_name: distill-temporal-pg
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+    volumes:
+      - temporal-pg-data:/var/lib/postgresql/data
+    ports:
+      - "6105:5432"
+    networks:
+      - distill-temporal
+
+  distill-temporal:
+    container_name: distill-temporal
+    image: temporalio/auto-setup:1.28.1
+    restart: unless-stopped
+    depends_on:
+      - distill-temporal-pg
+      - distill-opensearch
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=distill-temporal-pg
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=true
+      - ES_SEEDS=distill-opensearch
+      - ES_PORT=9200
+      - ES_VERSION=v7
+      - ES_SCHEME=http
+    ports:
+      - "6104:7233"
+    networks:
+      - distill-temporal
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+
+  distill-caddy:
+    image: caddy:2-alpine
+    container_name: distill-caddy
+    restart: unless-stopped
+    network_mode: "service:distill-postiz"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - distill-postiz
+
+volumes:
+  postiz-pg-data:
+  postiz-redis-data:
+  postiz-config:
+  postiz-uploads:
+  opensearch-data:
+  temporal-pg-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  distill-postiz:
+  distill-temporal:
+    driver: bridge
+    name: distill-temporal

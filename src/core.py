@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import os
+import tempfile
 from collections import Counter
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -10,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from distill.blog.config import GhostConfig
+    from distill.errors import PipelineReport
 
 from distill.formatters.project import (
     ProjectFormatter,
@@ -24,6 +28,28 @@ from distill.parsers.models import BaseSession
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+
+def _atomic_write(path: Path, content: str, encoding: str = "utf-8") -> None:
+    """Write content atomically — write to a temp file then rename.
+
+    Prevents half-written files on crash or interruption.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    try:
+        with os.fdopen(fd, "w", encoding=encoding) as f:
+            f.write(content)
+        os.replace(tmp_path, path)
+    except BaseException:
+        # Clean up temp file on any failure
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
 
 
 class SessionStats(BaseModel):
@@ -489,6 +515,7 @@ def generate_journal_notes(
     force: bool = False,
     dry_run: bool = False,
     model: str | None = None,
+    report: PipelineReport | None = None,
 ) -> list[Path]:
     """Generate journal entries from sessions using LLM synthesis.
 
@@ -511,6 +538,8 @@ def generate_journal_notes(
     from distill.journal.formatter import JournalFormatter
     from distill.journal.memory import load_memory, save_memory
     from distill.journal.synthesizer import JournalSynthesizer
+    from distill.memory import DailyEntry, load_unified_memory, save_unified_memory
+    from distill.trends import detect_trends, render_trends_for_prompt
 
     config = JournalConfig(
         style=JournalStyle(style),
@@ -527,7 +556,14 @@ def generate_journal_notes(
         target_dates = sorted(all_dates)
 
     written: list[Path] = []
+    # Load both legacy and unified memory
     memory = load_memory(output_dir)
+    unified = load_unified_memory(output_dir)
+
+    # Inject trends into unified memory prompt
+    trends = detect_trends(unified)
+    if trends:
+        unified.inject_trends(render_trends_for_prompt(trends))
 
     for target_date in target_dates:
         day_sessions = [s for s in sessions if s.start_time.date() == target_date]
@@ -539,7 +575,9 @@ def generate_journal_notes(
             continue
 
         context = prepare_daily_context(day_sessions, target_date, config)
-        context.previous_context = memory.render_for_prompt()
+        # Use unified memory for prompt context, fall back to legacy
+        unified_text = unified.render_for_prompt(focus="sessions")
+        context.previous_context = unified_text if unified_text else memory.render_for_prompt()
 
         if dry_run:
             # Dry run prints context and skips LLM
@@ -547,7 +585,18 @@ def generate_journal_notes(
             print("---")
             continue
 
-        prose = synthesizer.synthesize(context)
+        try:
+            prose = synthesizer.synthesize(context)
+        except Exception as exc:
+            logger.warning("Synthesis failed for %s: %s", target_date, exc)
+            if report:
+                report.add_error(
+                    "journal",
+                    str(exc),
+                    source="synthesizer",
+                    error_type="synthesis_error",
+                )
+            continue
 
         # Extract memory from prose (second LLM call)
         try:
@@ -556,6 +605,42 @@ def generate_journal_notes(
             memory.update_threads(threads)
             memory.prune(config.memory_window_days)
             save_memory(memory, output_dir)
+
+            # Update unified memory
+            unified.add_entry(
+                DailyEntry(
+                    date=target_date,
+                    sessions=[s.summary or "" for s in day_sessions[:5]],
+                    themes=daily_entry.themes if hasattr(daily_entry, "themes") else [],
+                    insights=daily_entry.key_insights
+                    if hasattr(daily_entry, "key_insights")
+                    else [],
+                    decisions=(
+                        daily_entry.decisions_made if hasattr(daily_entry, "decisions_made") else []
+                    ),
+                    open_questions=(
+                        daily_entry.open_questions if hasattr(daily_entry, "open_questions") else []
+                    ),
+                )
+            )
+            from distill.memory import MemoryThread as UnifiedThread
+
+            unified_threads = []
+            for t in threads:
+                unified_threads.append(
+                    UnifiedThread(
+                        name=t.name,
+                        summary=t.summary if hasattr(t, "summary") else "",
+                        first_seen=t.first_mentioned
+                        if hasattr(t, "first_mentioned")
+                        else target_date,
+                        last_seen=t.last_mentioned if hasattr(t, "last_mentioned") else target_date,
+                        status=t.status if hasattr(t, "status") else "active",
+                    )
+                )
+            unified.update_threads(unified_threads)
+            unified.prune(keep_days=30)
+            save_unified_memory(unified, output_dir)
         except Exception:
             logger.warning(
                 "Memory extraction failed for %s, continuing without update",
@@ -566,8 +651,7 @@ def generate_journal_notes(
         markdown = formatter.format_entry(context, prose)
 
         out_path = formatter.output_path(output_dir, context)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(markdown, encoding="utf-8")
+        _atomic_write(out_path, markdown)
 
         cache.mark_generated(target_date, config.style, len(day_sessions))
         written.append(out_path)
@@ -588,6 +672,7 @@ def generate_blog_posts(
     target_word_count: int = 1200,
     platforms: list[str] | None = None,
     ghost_config: Any | None = None,
+    report: PipelineReport | None = None,
 ) -> list[Path]:
     """Generate blog posts from existing journal entries.
 
@@ -621,9 +706,18 @@ def generate_blog_posts(
     )
     from distill.blog.synthesizer import BlogSynthesizer
     from distill.journal.memory import load_memory
+    from distill.memory import load_unified_memory, save_unified_memory
+    from distill.trends import detect_trends, render_trends_for_prompt
 
     if platforms is None:
         platforms = ["obsidian"]
+
+    # Load Postiz config once for all publisher calls
+    postiz_config = None
+    if "postiz" in platforms:
+        from distill.integrations.postiz import PostizConfig as _PostizConfig
+
+        postiz_config = _PostizConfig.from_env()
 
     config = BlogConfig(
         target_word_count=target_word_count,
@@ -647,6 +741,12 @@ def generate_blog_posts(
     memory = load_memory(output_dir)
     state = load_blog_state(output_dir) if not force else BlogState()
     blog_memory = load_blog_memory(output_dir)
+    unified = load_unified_memory(output_dir)
+
+    # Inject trends
+    trends = detect_trends(unified)
+    if trends:
+        unified.inject_trends(render_trends_for_prompt(trends))
 
     written: list[Path] = []
 
@@ -666,6 +766,7 @@ def generate_blog_posts(
                 platforms=platforms,
                 blog_memory=blog_memory,
                 ghost_config=ghost_config,
+                postiz_config=postiz_config,
                 intake_digests=intake_digests,
             )
         )
@@ -686,25 +787,50 @@ def generate_blog_posts(
                 platforms=platforms,
                 blog_memory=blog_memory,
                 ghost_config=ghost_config,
+                postiz_config=postiz_config,
                 intake_digests=intake_digests,
             )
         )
 
-    # 5. Save state, blog memory, and regenerate indexes
+    # 5. Reading list posts
+    if post_type in ("reading-list", "all"):
+        written.extend(
+            _generate_reading_list_posts(
+                entries=entries,
+                unified=unified,
+                state=state,
+                config=config,
+                synthesizer=synthesizer,
+                output_dir=output_dir,
+                force=force,
+                dry_run=dry_run,
+                platforms=platforms,
+                blog_memory=blog_memory,
+                ghost_config=ghost_config,
+                postiz_config=postiz_config,
+            )
+        )
+
+    # 6. Save state, blog memory, unified memory, and regenerate indexes
     if not dry_run:
         save_blog_state(state, output_dir)
         save_blog_memory(blog_memory, output_dir)
+        save_unified_memory(unified, output_dir)
         # Generate index for each file publisher
         for platform_name in platforms:
             try:
                 p = Platform(platform_name)
-                publisher = create_publisher(p, synthesizer=synthesizer, ghost_config=ghost_config)
+                publisher = create_publisher(
+                    p,
+                    synthesizer=synthesizer,
+                    ghost_config=ghost_config,
+                    postiz_config=postiz_config,
+                )
                 if not publisher.requires_llm:
                     idx_content = publisher.format_index(output_dir, state)
                     if idx_content:
                         idx_path = publisher.index_path(output_dir)
-                        idx_path.parent.mkdir(parents=True, exist_ok=True)
-                        idx_path.write_text(idx_content, encoding="utf-8")
+                        _atomic_write(idx_path, idx_content)
             except (ValueError, Exception):
                 pass
 
@@ -725,6 +851,7 @@ def _generate_weekly_posts(
     platforms: list[str],
     blog_memory: Any,
     ghost_config: Any | None = None,
+    postiz_config: Any | None = None,
     intake_digests: list[Any] | None = None,
 ) -> list[Path]:
     """Generate weekly synthesis blog posts."""
@@ -789,11 +916,15 @@ def _generate_weekly_posts(
         for platform_name in platforms:
             try:
                 p = Platform(platform_name)
-                publisher = create_publisher(p, synthesizer=synthesizer, ghost_config=ghost_config)
+                publisher = create_publisher(
+                    p,
+                    synthesizer=synthesizer,
+                    ghost_config=ghost_config,
+                    postiz_config=postiz_config,
+                )
                 content = publisher.format_weekly(context, prose)
                 out_path = publisher.weekly_output_path(output_dir, year, week)
-                out_path.parent.mkdir(parents=True, exist_ok=True)
-                out_path.write_text(content, encoding="utf-8")
+                _atomic_write(out_path, content)
                 written.append(out_path)
                 blog_memory.mark_published(slug, platform_name)
             except Exception:
@@ -835,6 +966,7 @@ def generate_intake(
     include_sessions: bool = False,
     session_dirs: list[str] | None = None,
     global_sessions: bool = False,
+    report: PipelineReport | None = None,
 ) -> list[Path]:
     """Ingest content from configured sources and synthesize a daily digest.
 
@@ -1030,9 +1162,28 @@ def generate_intake(
         print(context.combined_text[:2000])
         return []
 
-    # Synthesize
+    # Load both legacy and unified memory
+    from distill.memory import (
+        DailyEntry as UnifiedDailyEntry,
+    )
+    from distill.memory import (
+        load_unified_memory,
+        save_unified_memory,
+    )
+    from distill.trends import detect_trends, render_trends_for_prompt
+
     memory = load_intake_memory(output_dir)
-    memory_text = memory.render_for_prompt()
+
+    unified = load_unified_memory(output_dir)
+
+    # Inject trends
+    intake_trends = detect_trends(unified)
+    if intake_trends:
+        unified.inject_trends(render_trends_for_prompt(intake_trends))
+
+    # Use unified memory for prompt context
+    unified_text = unified.render_for_prompt(focus="intake")
+    memory_text = unified_text if unified_text else memory.render_for_prompt()
 
     synthesizer = IntakeSynthesizer(config)
     prose = synthesizer.synthesize_daily(context, memory_context=memory_text)
@@ -1044,11 +1195,17 @@ def generate_intake(
             publisher = create_intake_publisher(pub_name, ghost_config=ghost_config)
             content = publisher.format_daily(context, prose)
             out_path = publisher.daily_output_path(output_dir, context.date)
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            out_path.write_text(content, encoding="utf-8")
+            _atomic_write(out_path, content)
             written.append(out_path)
         except Exception:
             logger.warning("Failed to publish intake to %s", pub_name, exc_info=True)
+            if report:
+                report.add_error(
+                    "intake",
+                    str(pub_name),
+                    source=pub_name,
+                    error_type="publish_error",
+                )
 
     # Mark items as processed and save state
     for item in all_items:
@@ -1064,7 +1221,7 @@ def generate_intake(
     state.prune(keep_days=30)
     save_intake_state(state, output_dir)
 
-    # Update memory
+    # Update legacy memory
     from distill.intake.memory import DailyIntakeEntry
 
     memory.add_entry(
@@ -1077,6 +1234,31 @@ def generate_intake(
     )
     memory.prune(keep_days=30)
     save_intake_memory(memory, output_dir)
+
+    # Update unified memory
+    unified.add_entry(
+        UnifiedDailyEntry(
+            date=context.date,
+            reads=[i.title for i in all_items[:10] if i.title],
+            themes=list(context.all_tags[:5]),
+        )
+    )
+    # Track entities from extraction results
+    for item in all_items:
+        entities_data = item.metadata.get("entities", {})
+        if isinstance(entities_data, dict):
+            for entity_type, entity_list in entities_data.items():
+                if isinstance(entity_list, list):
+                    for entity_name in entity_list:
+                        if isinstance(entity_name, str):
+                            unified.track_entity(
+                                entity_name,
+                                entity_type,
+                                context.date,
+                                context=item.title or "",
+                            )
+    unified.prune(keep_days=30)
+    save_unified_memory(unified, output_dir)
 
     # Mark consumed seeds as used
     for seed_item in seed_items:
@@ -1101,6 +1283,7 @@ def _generate_thematic_posts(
     platforms: list[str],
     blog_memory: Any,
     ghost_config: Any | None = None,
+    postiz_config: Any | None = None,
     intake_digests: list[Any] | None = None,
 ) -> list[Path]:
     """Generate thematic deep-dive blog posts."""
@@ -1109,8 +1292,15 @@ def _generate_thematic_posts(
     from distill.blog.diagrams import clean_diagrams
     from distill.blog.publishers import create_publisher
     from distill.blog.state import BlogPostRecord
-    from distill.blog.themes import THEMES, gather_evidence, get_ready_themes, themes_from_seeds
+    from distill.blog.themes import (
+        THEMES,
+        detect_series_candidates,
+        gather_evidence,
+        get_ready_themes,
+        themes_from_seeds,
+    )
     from distill.intake.seeds import SeedStore
+    from distill.memory import load_unified_memory
 
     written: list[Path] = []
 
@@ -1141,6 +1331,15 @@ def _generate_thematic_posts(
             evidence = gather_evidence(seed_theme, entries)
             if len({e.date for e in evidence}) >= seed_theme.min_evidence_days:
                 themes_to_generate.append((seed_theme, evidence))
+
+        # Series detection from UnifiedMemory threads/entities
+        with contextlib.suppress(Exception):
+            unified_mem = load_unified_memory(output_dir)
+            series_candidates = detect_series_candidates(entries, unified_mem, state)
+            for series_theme in series_candidates:
+                evidence = gather_evidence(series_theme, entries)
+                if len({e.date for e in evidence}) >= series_theme.min_evidence_days:
+                    themes_to_generate.append((series_theme, evidence))
 
     for theme, evidence in themes_to_generate:
         if not force and state.is_generated(theme.slug):
@@ -1177,11 +1376,15 @@ def _generate_thematic_posts(
         for platform_name in platforms:
             try:
                 p = Platform(platform_name)
-                publisher = create_publisher(p, synthesizer=synthesizer, ghost_config=ghost_config)
+                publisher = create_publisher(
+                    p,
+                    synthesizer=synthesizer,
+                    ghost_config=ghost_config,
+                    postiz_config=postiz_config,
+                )
                 content = publisher.format_thematic(context, prose)
                 out_path = publisher.thematic_output_path(output_dir, theme.slug)
-                out_path.parent.mkdir(parents=True, exist_ok=True)
-                out_path.write_text(content, encoding="utf-8")
+                _atomic_write(out_path, content)
                 written.append(out_path)
                 blog_memory.mark_published(theme.slug, platform_name)
             except Exception:
@@ -1203,5 +1406,94 @@ def _generate_thematic_posts(
         if theme.slug in seed_angles and not dry_run:
             seed_id = theme.slug.removeprefix("seed-")
             seed_store.mark_used(seed_id, f"blog-{theme.slug}")
+
+    return written
+
+
+def _generate_reading_list_posts(
+    *,
+    entries: list[Any],
+    unified: Any,
+    state: Any,
+    config: Any,
+    synthesizer: Any,
+    output_dir: Path,
+    force: bool,
+    dry_run: bool,
+    platforms: list[str],
+    blog_memory: Any,
+    ghost_config: Any | None = None,
+    postiz_config: Any | None = None,
+) -> list[Path]:
+    """Generate reading list posts from intake content store."""
+    from distill.blog.config import Platform
+    from distill.blog.publishers import create_publisher
+    from distill.blog.reading_list import prepare_reading_list_context, render_reading_list_prompt
+    from distill.blog.state import BlogPostRecord
+    from distill.store import create_store
+
+    written: list[Path] = []
+
+    # Group entries by ISO week
+    weeks: set[tuple[int, int]] = set()
+    for entry in entries:
+        iso = entry.date.isocalendar()
+        weeks.add((iso.year, iso.week))
+
+    store = create_store(fallback_dir=output_dir)
+
+    for year, week in sorted(weeks):
+        slug = f"reading-list-{year}-W{week:02d}"
+        if not force and state.is_generated(slug):
+            continue
+
+        context = prepare_reading_list_context(output_dir, year, week, unified, store)
+        if context is None:
+            continue
+
+        if dry_run:
+            print(f"[DRY RUN] Would generate: {slug}")
+            print(f"  Items: {len(context.items)} / {context.total_items_read} total")
+            print("---")
+            continue
+
+        # Build prompt and synthesize
+        prompt_text = render_reading_list_prompt(context)
+        from distill.blog.config import BlogPostType
+        from distill.blog.prompts import get_blog_prompt
+
+        system_prompt = get_blog_prompt(
+            BlogPostType.READING_LIST,
+            word_count=config.target_word_count,
+        )
+        prose = synthesizer.synthesize_raw(system_prompt, prompt_text)
+
+        # Publish
+        for platform_name in platforms:
+            try:
+                p = Platform(platform_name)
+                publisher = create_publisher(
+                    p,
+                    synthesizer=synthesizer,
+                    ghost_config=ghost_config,
+                    postiz_config=postiz_config,
+                )
+                out_path = publisher.weekly_output_path(output_dir, year, week)
+                # Use reading-list subdirectory
+                out_path = out_path.parent.parent / "reading-list" / out_path.name
+                _atomic_write(out_path, prose)
+                written.append(out_path)
+            except Exception:
+                logger.warning("Failed to publish reading list to %s", platform_name, exc_info=True)
+
+        state.mark_generated(
+            BlogPostRecord(
+                slug=slug,
+                post_type="reading-list",
+                generated_at=datetime.now(),
+                source_dates=[context.week_start],
+                file_path=str(written[-1]) if written else "",
+            )
+        )
 
     return written

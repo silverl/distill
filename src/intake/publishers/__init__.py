@@ -56,4 +56,9 @@ def create_intake_publisher(
     if platform == "ghost":
         return GhostIntakePublisher(ghost_config=ghost_config)
 
+    if platform == "postiz":
+        from distill.intake.publishers.postiz import PostizIntakePublisher
+
+        return PostizIntakePublisher()
+
     raise ValueError(f"Unknown intake publisher: {platform!r}")

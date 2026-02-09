@@ -65,10 +65,13 @@ class PublishedRecord(BaseModel):
 class UnifiedMemory(BaseModel):
     """One memory system for the entire distill pipeline."""
 
+    model_config = {"arbitrary_types_allowed": True}
+
     entries: list[DailyEntry] = Field(default_factory=list)
     threads: list[MemoryThread] = Field(default_factory=list)
     entities: dict[str, EntityRecord] = Field(default_factory=dict)
     published: list[PublishedRecord] = Field(default_factory=list)
+    _trends_text: str = ""
 
     def render_for_prompt(self, focus: str = "all") -> str:
         """Render memory context for LLM prompts.
@@ -122,6 +125,27 @@ class UnifiedMemory(BaseModel):
                 )
             lines.append("")
 
+        # Entity context — top entities by mention count
+        if self.entities:
+            top_entities = sorted(
+                self.entities.values(),
+                key=lambda e: e.mention_count,
+                reverse=True,
+            )[:10]
+            if top_entities:
+                lines.append("## What You've Been Working On")
+                for entity in top_entities:
+                    days_span = (entity.last_seen - entity.first_seen).days + 1
+                    lines.append(
+                        f"- **{entity.name}** ({entity.entity_type}): "
+                        f"{entity.mention_count}x over {days_span} days"
+                    )
+                lines.append("")
+
+        # Trends (injected externally or computed here)
+        if hasattr(self, "_trends_text") and self._trends_text:
+            lines.append(self._trends_text)
+
         if focus in ("all", "blog") and self.published:
             recent_pub = sorted(self.published, key=lambda p: p.date, reverse=True)[:5]
             lines.append("## Recently Published")
@@ -131,6 +155,10 @@ class UnifiedMemory(BaseModel):
             lines.append("")
 
         return "\n".join(lines)
+
+    def inject_trends(self, trends_text: str) -> None:
+        """Inject pre-rendered trends text into the memory prompt output."""
+        self._trends_text = trends_text
 
     def add_entry(self, entry: DailyEntry) -> None:
         """Add or replace a daily entry."""
