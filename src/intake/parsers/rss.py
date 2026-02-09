@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 import feedparser
 from distill.intake.models import ContentItem, ContentSource, ContentType
@@ -113,20 +114,43 @@ class RSSParser(ContentParser):
 
         return unique
 
+    def _fetch_feed(self, url: str) -> feedparser.FeedParserDict:
+        """Fetch and parse a feed URL with timeout."""
+        timeout = self._config.rss.fetch_timeout
+        try:
+            req = Request(url, headers={"User-Agent": "distill-rss/1.0"})
+            with urlopen(req, timeout=timeout) as resp:  # noqa: S310
+                data = resp.read()
+            return feedparser.parse(data)
+        except Exception:
+            # Fall back to feedparser's built-in fetching (no timeout)
+            logger.debug("Direct fetch failed for %s, falling back to feedparser", url)
+            return feedparser.parse(url)
+
     def _parse_feed(self, url: str, *, since: datetime | None = None) -> list[ContentItem]:
         """Parse a single RSS/Atom feed URL."""
-        feed = feedparser.parse(url)
+        feed = self._fetch_feed(url)
 
         if feed.bozo and not feed.entries:
             logger.warning("Feed error for %s: %s", url, feed.bozo_exception)
             return []
 
-        site_name = feed.feed.get("title", "")
-        feed_author = feed.feed.get("author", "")
+        if feed.bozo:
+            logger.warning(
+                "Feed %s has errors but returned %d entries: %s",
+                url,
+                len(feed.entries),
+                feed.bozo_exception,
+            )
+
+        feed_meta = feed.feed if feed.feed else {}
+        site_name = feed_meta.get("title", "") if isinstance(feed_meta, dict) else ""
+        feed_author = feed_meta.get("author", "") if isinstance(feed_meta, dict) else ""
         items: list[ContentItem] = []
         max_items = self._config.rss.max_items_per_feed
+        entries = feed.entries if feed.entries else []
 
-        for entry in feed.entries[:max_items]:
+        for entry in entries[:max_items]:
             item = self._entry_to_item(
                 entry,
                 site_name=site_name,

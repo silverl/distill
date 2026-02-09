@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from distill.intake.config import IntakeConfig, RSSConfig
 from distill.intake.models import ContentItem, ContentSource, ContentType
-from distill.intake.parsers.rss import RSSParser, _strip_html, _normalize_url
-
+from distill.intake.parsers.rss import RSSParser, _normalize_url, _strip_html
 
 # ── HTML stripping ──────────────────────────────────────────────────────
 
@@ -172,7 +169,7 @@ def _make_feed_entry(**overrides):
     """Create a mock feedparser entry."""
     # Use a recent timestamp so it passes the recency filter
     recent_time = time.gmtime(
-        int((datetime.now(tz=timezone.utc) - timedelta(days=1)).timestamp())
+        int((datetime.now(tz=UTC) - timedelta(days=1)).timestamp())
     )
     entry = {
         "title": "Test Article",
@@ -262,7 +259,7 @@ class TestEntryConversion:
         item = parser._entry_to_item(entry)
         assert item is not None
         assert item.published_at is not None
-        assert item.published_at.tzinfo == timezone.utc
+        assert item.published_at.tzinfo == UTC
 
     def test_no_date(self):
         parser = self._make_parser()
@@ -308,9 +305,16 @@ class TestEntryConversion:
 
 class TestDedupByUrl:
     def test_deduplicates_same_url(self):
+        url = "https://example.com/article"
         items = [
-            ContentItem(id="a", url="https://example.com/article", source=ContentSource.RSS, word_count=100, body="short"),
-            ContentItem(id="b", url="https://example.com/article", source=ContentSource.RSS, word_count=500, body="longer version"),
+            ContentItem(
+                id="a", url=url, source=ContentSource.RSS,
+                word_count=100, body="short",
+            ),
+            ContentItem(
+                id="b", url=url, source=ContentSource.RSS,
+                word_count=500, body="longer version",
+            ),
         ]
         result = RSSParser._dedup_by_url(items)
         assert len(result) == 1
@@ -326,8 +330,14 @@ class TestDedupByUrl:
 
     def test_normalizes_trailing_slash(self):
         items = [
-            ContentItem(id="a", url="https://example.com/article/", source=ContentSource.RSS, word_count=100),
-            ContentItem(id="b", url="https://example.com/article", source=ContentSource.RSS, word_count=200),
+            ContentItem(
+                id="a", url="https://example.com/article/",
+                source=ContentSource.RSS, word_count=100,
+            ),
+            ContentItem(
+                id="b", url="https://example.com/article",
+                source=ContentSource.RSS, word_count=200,
+            ),
         ]
         result = RSSParser._dedup_by_url(items)
         assert len(result) == 1
@@ -356,8 +366,8 @@ class TestParseFeed:
         mock_feed.feed = {"title": "Test Blog", "author": "Blog Owner"}
         mock_feed.entries = [_make_feed_entry()]
 
-        with patch("distill.intake.parsers.rss.feedparser.parse", return_value=mock_feed):
-            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
 
         assert len(items) == 1
         assert items[0].site_name == "Test Blog"
@@ -376,8 +386,8 @@ class TestParseFeed:
             _make_feed_entry(published_parsed=time.gmtime(1707300000)),  # old
         ]
 
-        future = datetime(2030, 1, 1, tzinfo=timezone.utc)
-        with patch("distill.intake.parsers.rss.feedparser.parse", return_value=mock_feed):
+        future = datetime(2030, 1, 1, tzinfo=UTC)
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
             items = parser.parse(since=future)
 
         assert len(items) == 0
@@ -391,7 +401,7 @@ class TestParseFeed:
         parser = RSSParser(config=config)
 
         old_time = time.gmtime(
-            int((datetime.now(tz=timezone.utc) - timedelta(days=30)).timestamp())
+            int((datetime.now(tz=UTC) - timedelta(days=30)).timestamp())
         )
         mock_feed = MagicMock()
         mock_feed.bozo = False
@@ -400,7 +410,7 @@ class TestParseFeed:
             _make_feed_entry(published_parsed=old_time),
         ]
 
-        with patch("distill.intake.parsers.rss.feedparser.parse", return_value=mock_feed):
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
             items = parser.parse(since=None)  # should default to 7 days
 
         assert len(items) == 0
@@ -419,8 +429,8 @@ class TestParseFeed:
             _make_feed_entry(summary="short"),  # only 1 word
         ]
 
-        with patch("distill.intake.parsers.rss.feedparser.parse", return_value=mock_feed):
-            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
 
         assert len(items) == 0
 
@@ -437,8 +447,8 @@ class TestParseFeed:
         mock_feed.entries = []
         mock_feed.feed = {}
 
-        with patch("distill.intake.parsers.rss.feedparser.parse", return_value=mock_feed):
-            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
 
         assert len(items) == 0
 
@@ -464,11 +474,145 @@ class TestParseFeed:
         mock_feed.feed = {"title": "Test Blog", "author": "Blog Owner"}
         mock_feed.entries = [_make_feed_entry(author="")]
 
-        with patch("distill.intake.parsers.rss.feedparser.parse", return_value=mock_feed):
-            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
 
         assert len(items) == 1
         assert items[0].author == "Blog Owner"
+
+    def test_bozo_feed_with_entries_still_returns_items(self):
+        """Malformed feeds that still have entries should return items with a warning."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://example.com/feed"]),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        mock_feed = MagicMock()
+        mock_feed.bozo = True
+        mock_feed.bozo_exception = Exception("XML not well-formed")
+        mock_feed.feed = {"title": "Broken Blog"}
+        mock_feed.entries = [_make_feed_entry()]
+
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
+
+        assert len(items) == 1
+        assert items[0].site_name == "Broken Blog"
+
+    def test_feed_with_none_feed_meta(self):
+        """Feed with no feed metadata should not crash."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://example.com/feed"]),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        mock_feed = MagicMock()
+        mock_feed.bozo = False
+        mock_feed.feed = None
+        mock_feed.entries = [_make_feed_entry()]
+
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
+
+        assert len(items) == 1
+        assert items[0].site_name == ""
+
+    def test_feed_with_none_entries(self):
+        """Feed with entries=None should not crash."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://example.com/feed"]),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        mock_feed = MagicMock()
+        mock_feed.bozo = False
+        mock_feed.feed = {"title": "Blog"}
+        mock_feed.entries = None
+
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
+
+        assert len(items) == 0
+
+    def test_fetch_feed_uses_timeout(self):
+        """_fetch_feed should use configured timeout."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://example.com/feed"], fetch_timeout=15),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = b"<rss><channel></channel></rss>"
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        with patch("distill.intake.parsers.rss.urlopen", return_value=mock_resp) as mock_urlopen:
+            parser._fetch_feed("https://example.com/feed")
+            mock_urlopen.assert_called_once()
+            _, kwargs = mock_urlopen.call_args
+            assert kwargs["timeout"] == 15
+
+    def test_fetch_feed_falls_back_on_error(self):
+        """If direct fetch fails, should fall back to feedparser."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://example.com/feed"]),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        with (
+            patch("distill.intake.parsers.rss.urlopen", side_effect=OSError("Connection refused")),
+            patch("distill.intake.parsers.rss.feedparser.parse") as mock_fp,
+        ):
+            mock_fp.return_value = MagicMock(bozo=False, feed={}, entries=[])
+            parser._fetch_feed("https://example.com/feed")
+            mock_fp.assert_called_once_with("https://example.com/feed")
+
+    def test_feed_exception_does_not_crash_parse(self):
+        """A feed that raises an exception should be skipped, not crash."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://good.com/feed", "https://bad.com/feed"]),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        good_feed = MagicMock()
+        good_feed.bozo = False
+        good_feed.feed = {"title": "Good Blog"}
+        good_feed.entries = [_make_feed_entry()]
+
+        def mock_fetch(url):
+            if "bad.com" in url:
+                raise OSError("Connection timed out")
+            return good_feed
+
+        with patch.object(parser, "_fetch_feed", side_effect=mock_fetch):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
+
+        assert len(items) == 1  # only good feed items
+
+    def test_since_naive_datetime_gets_utc(self):
+        """A naive datetime for since should be treated as UTC."""
+        config = IntakeConfig(
+            rss=RSSConfig(feeds=["https://example.com/feed"]),
+            min_word_count=0,
+        )
+        parser = RSSParser(config=config)
+
+        mock_feed = MagicMock()
+        mock_feed.bozo = False
+        mock_feed.feed = {"title": "Blog"}
+        mock_feed.entries = [_make_feed_entry()]
+
+        naive_since = datetime(2020, 1, 1)  # no tzinfo
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", return_value=mock_feed):
+            items = parser.parse(since=naive_since)
+
+        assert len(items) == 1
 
     def test_cross_feed_dedup(self):
         config = IntakeConfig(
@@ -492,8 +636,8 @@ class TestParseFeed:
         def mock_parse(url):
             return mock_feed_a if "a.com" in url else mock_feed_b
 
-        with patch("distill.intake.parsers.rss.feedparser.parse", side_effect=mock_parse):
-            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        with patch("distill.intake.parsers.rss.RSSParser._fetch_feed", side_effect=mock_parse):
+            items = parser.parse(since=datetime(2020, 1, 1, tzinfo=UTC))
 
         assert len(items) == 1
 
