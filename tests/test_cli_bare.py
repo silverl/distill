@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from distill.cli import app
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "FORCE_COLOR": None})
 
 
 class TestInitConfig:

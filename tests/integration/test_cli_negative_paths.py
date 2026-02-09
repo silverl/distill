@@ -28,17 +28,19 @@ SRC_DIR = str(Path(__file__).parents[1] / "src")
 @pytest.fixture
 def runner() -> CliRunner:
     """Create a CLI test runner."""
-    return CliRunner()
+    return CliRunner(env={"NO_COLOR": "1", "FORCE_COLOR": None})
 
 
 def _run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     """Run the CLI as a subprocess (for E2E traceback checks)."""
+    env = {**os.environ, "PYTHONPATH": SRC_DIR, "NO_COLOR": "1"}
+    env.pop("FORCE_COLOR", None)
     return subprocess.run(
         [sys.executable, "-m", "distill", *args],
         capture_output=True,
         text=True,
         cwd=cwd,
-        env={**os.environ, "PYTHONPATH": SRC_DIR},
+        env=env,
     )
 
 

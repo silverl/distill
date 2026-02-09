@@ -136,6 +136,7 @@ export const BlogFrontmatterSchema = z.object({
 	slug: z.string().optional(),
 	tags: z.array(z.string()).default([]),
 	themes: z.array(z.string()).default([]),
+	projects: z.array(z.string()).default([]),
 	created: z.string().optional(),
 });
 
@@ -157,6 +158,14 @@ export const DashboardResponseSchema = z.object({
 	blogCount: z.number(),
 	intakeCount: z.number(),
 	pendingPublish: z.number(),
+	projectCount: z.number(),
+	activeProjects: z.array(
+		z.object({
+			name: z.string(),
+			lastSeen: z.string(),
+			journalCount: z.number(),
+		}),
+	),
 	recentJournals: z.array(
 		z.object({
 			date: z.string(),
@@ -194,6 +203,7 @@ export const BlogPostSchema = z.object({
 	date: z.string(),
 	tags: z.array(z.string()),
 	themes: z.array(z.string()),
+	projects: z.array(z.string()),
 	filename: z.string(),
 	platformsPublished: z.array(z.string()),
 });
@@ -270,6 +280,7 @@ export const IntakeConfigSchema = z.object({
 	use_defaults: z.boolean().default(true),
 	browser_history: z.boolean().default(false),
 	substack_blogs: z.array(z.string()).default([]),
+	rss_feeds: z.array(z.string()).default([]),
 	target_word_count: z.number().default(800),
 	model: z.string().nullable().default(null),
 	publishers: z.array(z.string()).default(["obsidian"]),
@@ -333,6 +344,8 @@ export const SourceStatusSchema = z.object({
 	source: z.string(),
 	configured: z.boolean(),
 	label: z.string(),
+	description: z.string().default(""),
+	availability: z.enum(["available", "coming_soon"]).default("available"),
 });
 
 // --- Pipeline Status ---
@@ -348,6 +361,28 @@ export const PipelineStatusSchema = z.object({
 export const PipelineRunResponseSchema = z.object({
 	id: z.string(),
 	started: z.boolean(),
+});
+
+// --- Project views ---
+
+export const ProjectSummarySchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	url: z.string().default(""),
+	tags: z.array(z.string()).default([]),
+	journalCount: z.number(),
+	blogCount: z.number(),
+	totalSessions: z.number(),
+	totalDurationMinutes: z.number(),
+	lastSeen: z.string(),
+	hasProjectNote: z.boolean(),
+});
+
+export const ProjectDetailSchema = z.object({
+	summary: ProjectSummarySchema,
+	journals: z.array(JournalEntrySchema),
+	blogs: z.array(BlogPostSchema),
+	projectNoteContent: z.string().nullable(),
 });
 
 // --- Save (edit) ---
@@ -401,3 +436,5 @@ export type DistillConfig = z.infer<typeof DistillConfigSchema>;
 export type SourceStatus = z.infer<typeof SourceStatusSchema>;
 export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
 export type PipelineRunResponse = z.infer<typeof PipelineRunResponseSchema>;
+export type ProjectSummary = z.infer<typeof ProjectSummarySchema>;
+export type ProjectDetail = z.infer<typeof ProjectDetailSchema>;

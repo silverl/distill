@@ -96,9 +96,6 @@ describe("Config API", () => {
 			"[intake]",
 			"browser_history = true",
 			'substack_blogs = ["https://example.substack.com"]',
-			"",
-			"[reddit]",
-			'client_id = "abc123"',
 		].join("\n");
 		await writeFile(join(TMP_DIR, ".distill.toml"), tomlContent, "utf-8");
 
@@ -108,23 +105,39 @@ describe("Config API", () => {
 		expect(data.sources).toBeInstanceOf(Array);
 		expect(data.sources.length).toBe(8);
 
+		// Available sources
 		const rss = data.sources.find((s: { source: string }) => s.source === "rss");
 		expect(rss.configured).toBe(true);
 		expect(rss.label).toBe("RSS Feeds");
+		expect(rss.availability).toBe("available");
+		expect(rss.description).toBeTruthy();
 
 		const browser = data.sources.find((s: { source: string }) => s.source === "browser");
 		expect(browser.configured).toBe(true);
+		expect(browser.availability).toBe("available");
 
 		const substack = data.sources.find((s: { source: string }) => s.source === "substack");
 		expect(substack.configured).toBe(true);
+		expect(substack.availability).toBe("available");
 
+		// Coming soon sources
 		const reddit = data.sources.find((s: { source: string }) => s.source === "reddit");
-		expect(reddit.configured).toBe(true);
+		expect(reddit.configured).toBe(false);
+		expect(reddit.availability).toBe("coming_soon");
+		expect(reddit.description).toBeTruthy();
 
 		const youtube = data.sources.find((s: { source: string }) => s.source === "youtube");
 		expect(youtube.configured).toBe(false);
+		expect(youtube.availability).toBe("coming_soon");
 
 		const gmail = data.sources.find((s: { source: string }) => s.source === "gmail");
 		expect(gmail.configured).toBe(false);
+		expect(gmail.availability).toBe("coming_soon");
+
+		const linkedin = data.sources.find((s: { source: string }) => s.source === "linkedin");
+		expect(linkedin.availability).toBe("coming_soon");
+
+		const twitter = data.sources.find((s: { source: string }) => s.source === "twitter");
+		expect(twitter.availability).toBe("coming_soon");
 	});
 });

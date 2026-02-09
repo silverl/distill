@@ -15,7 +15,7 @@ from distill.parsers.codex import CodexParser
 @pytest.fixture
 def runner() -> CliRunner:
     """Create a CLI test runner."""
-    return CliRunner()
+    return CliRunner(env={"NO_COLOR": "1", "FORCE_COLOR": None})
 
 
 @pytest.fixture

@@ -28,6 +28,7 @@ export interface DistillTomlConfig {
 		use_defaults?: boolean;
 		browser_history?: boolean;
 		substack_blogs?: string[];
+		rss_feeds?: string[];
 		target_word_count?: number;
 		model?: string;
 		publishers?: string[];

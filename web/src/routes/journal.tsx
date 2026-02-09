@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import type { JournalEntry } from "../../shared/schemas.js";
 import { DateBadge } from "../components/shared/DateBadge.js";
+import { ProjectFilterPills } from "../components/shared/ProjectFilterPills.js";
 import { TagBadge } from "../components/shared/TagBadge.js";
 
 export default function JournalList() {
+	const [filterProject, setFilterProject] = useState<string | null>(null);
 	const { data, isLoading } = useQuery<{ entries: JournalEntry[] }>({
 		queryKey: ["journal"],
 		queryFn: async () => {
@@ -16,14 +19,30 @@ export default function JournalList() {
 
 	if (isLoading) return <div className="animate-pulse text-zinc-400">Loading journal...</div>;
 
-	const entries = data?.entries ?? [];
+	const allEntries = data?.entries ?? [];
+
+	// Extract unique project names
+	const projectNames = [...new Set(allEntries.flatMap((e) => e.projects))].sort();
+
+	const entries = filterProject
+		? allEntries.filter((e) => e.projects.includes(filterProject))
+		: allEntries;
 
 	return (
 		<div className="space-y-6">
 			<h2 className="text-2xl font-bold">Journal</h2>
+
+			<ProjectFilterPills
+				projectNames={projectNames}
+				filterProject={filterProject}
+				onFilterChange={setFilterProject}
+			/>
+
 			{entries.length === 0 ? (
 				<p className="text-zinc-500">
-					No journal entries yet. Run <code>distill journal</code> to generate some.
+					{filterProject
+						? `No journal entries for project "${filterProject}".`
+						: "No journal entries yet. Run `distill journal` to generate some."}
 				</p>
 			) : (
 				<div className="space-y-2">

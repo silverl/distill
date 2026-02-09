@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import type { BlogPost } from "../../shared/schemas.js";
 import { DateBadge } from "../components/shared/DateBadge.js";
+import { ProjectFilterPills } from "../components/shared/ProjectFilterPills.js";
 import { TagBadge } from "../components/shared/TagBadge.js";
 
 export default function BlogList() {
+	const [filterProject, setFilterProject] = useState<string | null>(null);
 	const { data, isLoading } = useQuery<{ posts: BlogPost[] }>({
 		queryKey: ["blog"],
 		queryFn: async () => {
@@ -16,14 +19,30 @@ export default function BlogList() {
 
 	if (isLoading) return <div className="animate-pulse text-zinc-400">Loading blog posts...</div>;
 
-	const posts = data?.posts ?? [];
+	const allPosts = data?.posts ?? [];
+
+	// Extract unique project names
+	const projectNames = [...new Set(allPosts.flatMap((p) => p.projects))].sort();
+
+	const posts = filterProject
+		? allPosts.filter((p) => p.projects.includes(filterProject))
+		: allPosts;
 
 	return (
 		<div className="space-y-6">
 			<h2 className="text-2xl font-bold">Blog</h2>
+
+			<ProjectFilterPills
+				projectNames={projectNames}
+				filterProject={filterProject}
+				onFilterChange={setFilterProject}
+			/>
+
 			{posts.length === 0 ? (
 				<p className="text-zinc-500">
-					No blog posts yet. Run <code>distill blog</code> to generate some.
+					{filterProject
+						? `No blog posts for project "${filterProject}".`
+						: "No blog posts yet. Run `distill blog` to generate some."}
 				</p>
 			) : (
 				<div className="space-y-2">

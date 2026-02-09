@@ -1,40 +1,16 @@
 import { basename, join } from "node:path";
 import { Hono } from "hono";
-import {
-	type JournalEntry,
-	JournalFrontmatterSchema,
-	SaveMarkdownSchema,
-} from "../../shared/schemas.js";
+import { JournalFrontmatterSchema, SaveMarkdownSchema } from "../../shared/schemas.js";
 import { getConfig } from "../lib/config.js";
 import { listFiles, readMarkdown, writeMarkdown } from "../lib/files.js";
 import { parseFrontmatter, reconstructMarkdown } from "../lib/frontmatter.js";
+import { loadJournalEntries } from "../lib/loaders.js";
 
 const app = new Hono();
 
 app.get("/api/journal", async (c) => {
 	const { OUTPUT_DIR } = getConfig();
-	const files = await listFiles(join(OUTPUT_DIR, "journal"), /^journal-.*\.md$/);
-
-	const entries: JournalEntry[] = [];
-	for (const file of files) {
-		const raw = await readMarkdown(file);
-		if (!raw) continue;
-		const parsed = parseFrontmatter(raw, JournalFrontmatterSchema);
-		if (parsed) {
-			entries.push({
-				date: parsed.frontmatter.date,
-				style: parsed.frontmatter.style,
-				sessionsCount: parsed.frontmatter.sessions_count,
-				durationMinutes: parsed.frontmatter.duration_minutes,
-				tags: parsed.frontmatter.tags,
-				projects: parsed.frontmatter.projects,
-				filename: basename(file),
-			});
-		}
-	}
-
-	// Sort by date descending
-	entries.sort((a, b) => b.date.localeCompare(a.date));
+	const entries = await loadJournalEntries(OUTPUT_DIR);
 	return c.json({ entries });
 });
 

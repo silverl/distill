@@ -28,12 +28,14 @@ def _run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     Returns:
         CompletedProcess with captured stdout/stderr.
     """
+    env = {**os.environ, "PYTHONPATH": SRC_DIR, "NO_COLOR": "1"}
+    env.pop("FORCE_COLOR", None)
     return subprocess.run(
         [sys.executable, "-m", "distill", *args],
         capture_output=True,
         text=True,
         cwd=cwd,
-        env={**os.environ, "PYTHONPATH": SRC_DIR},
+        env=env,
     )
 
 

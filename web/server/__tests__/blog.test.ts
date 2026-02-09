@@ -32,6 +32,8 @@ tags:
   - architecture
 themes:
   - content-pipeline
+projects:
+  - distill
 ---
 
 # Week 6: Building the Pipeline
@@ -85,6 +87,14 @@ A deep dive into multi-agent coordination.`,
 		}
 	});
 
+	test("blog posts include projects", async () => {
+		const res = await app.request("/api/blog/posts");
+		const data = await res.json();
+		const weekly = data.posts.find((p: { slug: string }) => p.slug === "weekly-2026-W06");
+		expect(weekly).toBeDefined();
+		expect(weekly.projects).toEqual(["distill"]);
+	});
+
 	test("includes platform publish status from blog memory", async () => {
 		const res = await app.request("/api/blog/posts");
 		const data = await res.json();
@@ -113,6 +123,8 @@ date: 2026-02-07
 type: blog
 post_type: weekly
 slug: weekly-2026-W06
+projects:
+  - distill
 ---
 
 # Week 6
@@ -136,6 +148,13 @@ Content here.`,
 		expect(data).toHaveProperty("content");
 		expect(data.meta.slug).toBe("weekly-2026-W06");
 		expect(data.content).toContain("Week 6");
+	});
+
+	test("detail response includes meta.projects", async () => {
+		const res = await app.request("/api/blog/posts/weekly-2026-W06");
+		const data = await res.json();
+		expect(data.meta).toHaveProperty("projects");
+		expect(data.meta.projects).toEqual(["distill"]);
 	});
 
 	test("returns 404 for nonexistent slug", async () => {

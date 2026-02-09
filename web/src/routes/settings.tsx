@@ -95,6 +95,7 @@ function SourcesTab() {
 	const [vermas, setVermas] = useState(false);
 	const [rssEnabled, setRssEnabled] = useState(true);
 	const [useDefaults, setUseDefaults] = useState(true);
+	const [customFeeds, setCustomFeeds] = useState("");
 	const [browserHistory, setBrowserHistory] = useState(false);
 	const [substackEnabled, setSubstackEnabled] = useState(false);
 	const [substackUrls, setSubstackUrls] = useState("");
@@ -105,6 +106,7 @@ function SourcesTab() {
 		const sources = config.sessions?.sources ?? [];
 		setVermas(sources.includes("vermas"));
 		setUseDefaults(config.intake?.use_defaults ?? true);
+		setCustomFeeds((config.intake?.rss_feeds ?? []).join("\n"));
 		setBrowserHistory(config.intake?.browser_history ?? false);
 		const blogs = config.intake?.substack_blogs ?? [];
 		setSubstackEnabled(blogs.length > 0);
@@ -138,18 +140,24 @@ function SourcesTab() {
 					.filter(Boolean)
 			: [];
 
+		const rssFeeds = customFeeds
+			.split("\n")
+			.map((u) => u.trim())
+			.filter(Boolean);
+
 		saveMutation.mutate({
 			sessions: { sources: sessionSources },
 			intake: {
 				use_defaults: useDefaults,
 				browser_history: browserHistory,
 				substack_blogs: substackBlogs,
+				rss_feeds: rssFeeds,
 			},
 		});
 	}
 
-	const otherSources = (sourcesData?.sources ?? []).filter(
-		(s) => !["rss", "browser", "substack"].includes(s.source),
+	const comingSoonSources = (sourcesData?.sources ?? []).filter(
+		(s) => s.availability === "coming_soon",
 	);
 
 	return (
@@ -194,15 +202,30 @@ function SourcesTab() {
 					Enable RSS ingestion
 				</label>
 				{rssEnabled && (
-					<label className="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							checked={useDefaults}
-							onChange={(e) => setUseDefaults(e.target.checked)}
-							className="rounded border-zinc-300"
-						/>
-						Use default feeds (90+ curated tech blogs)
-					</label>
+					<>
+						<label className="flex items-center gap-2 text-sm">
+							<input
+								type="checkbox"
+								checked={useDefaults}
+								onChange={(e) => setUseDefaults(e.target.checked)}
+								className="rounded border-zinc-300"
+							/>
+							Use default feeds (90+ curated tech blogs)
+						</label>
+						<label className={labelClass}>
+							Custom feed URLs (one per line)
+							<textarea
+								value={customFeeds}
+								onChange={(e) => setCustomFeeds(e.target.value)}
+								rows={4}
+								placeholder="https://blog.example.com/feed"
+								className={inputClass}
+							/>
+						</label>
+						<p className="text-xs text-zinc-400">
+							Custom feeds are used alongside defaults when both are enabled.
+						</p>
+					</>
 				)}
 			</div>
 
@@ -246,25 +269,26 @@ function SourcesTab() {
 				)}
 			</div>
 
-			{/* Other sources */}
-			<div className={sectionClass}>
-				<h3 className="text-base font-semibold">Other Sources</h3>
-				<p className="text-sm text-zinc-500">
-					Configure these sources in <code className="text-xs">.distill.toml</code> or environment
-					variables.
-				</p>
-				<div className="space-y-2">
-					{otherSources.map((s) => (
-						<div key={s.source} className="flex items-center gap-2 text-sm">
-							<StatusDot ok={s.configured} />
-							<span>{s.label}</span>
-							<span className="text-xs text-zinc-400">
-								{s.configured ? "configured" : "not configured"}
-							</span>
-						</div>
-					))}
+			{/* Coming Soon sources */}
+			{comingSoonSources.length > 0 && (
+				<div className={sectionClass}>
+					<h3 className="text-base font-semibold">Coming Soon</h3>
+					<p className="text-sm text-zinc-500">
+						These sources are planned for future releases.
+					</p>
+					<div className="space-y-2">
+						{comingSoonSources.map((s) => (
+							<div key={s.source} className="flex items-center gap-2 text-sm">
+								<span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+									Soon
+								</span>
+								<span>{s.label}</span>
+								<span className="text-xs text-zinc-400">{s.description}</span>
+							</div>
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			<button
 				type="button"

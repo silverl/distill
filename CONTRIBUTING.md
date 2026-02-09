@@ -95,6 +95,8 @@ Editorial notes are managed by `src/editorial.py:EditorialStore`. They follow th
 - All secrets come from environment variables, never hardcoded
 - Configuration: `.distill.toml` < env vars < CLI flags
 - Test coverage target: 90%+
+- **Port convention**: API server on 4321, Vite dev on 5173, tests on 3001. Never introduce new ports.
+- CLI tests must set `NO_COLOR=1` (and remove `FORCE_COLOR`) to avoid ANSI codes breaking assertions
 
 ## Reporting Issues
 

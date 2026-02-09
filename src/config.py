@@ -70,6 +70,7 @@ class IntakeSectionConfig(BaseModel):
     use_defaults: bool = True
     browser_history: bool = False
     substack_blogs: list[str] = Field(default_factory=list)
+    rss_feeds: list[str] = Field(default_factory=list)
     target_word_count: int = 800
     model: str | None = None
     publishers: list[str] = Field(default_factory=lambda: ["obsidian"])

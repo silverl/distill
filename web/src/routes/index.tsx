@@ -22,12 +22,35 @@ export default function Dashboard() {
 			<h2 className="text-2xl font-bold">Dashboard</h2>
 
 			{/* Quick stats */}
-			<div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+			<div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
 				<StatCard label="Journal entries" value={data.journalCount} to="/journal" />
 				<StatCard label="Blog posts" value={data.blogCount} to="/blog" />
+				<StatCard label="Projects" value={data.projectCount} to="/projects" />
 				<StatCard label="Intake digests" value={data.intakeCount} to="/reading" />
 				<StatCard label="Ready to publish" value={data.pendingPublish} to="/publish" />
 			</div>
+
+			{/* Active projects */}
+			{data.activeProjects.length > 0 && (
+				<section>
+					<h3 className="mb-3 text-lg font-semibold">Active Projects</h3>
+					<div className="flex flex-wrap gap-3">
+						{data.activeProjects.map((p) => (
+							<Link
+								key={p.name}
+								to="/projects/$name"
+								params={{ name: p.name }}
+								className="rounded-lg border border-zinc-200 px-4 py-3 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+							>
+								<span className="font-medium">{p.name}</span>
+								<div className="mt-1 text-xs text-zinc-500">
+									{p.journalCount} entries, last {p.lastSeen}
+								</div>
+							</Link>
+						))}
+					</div>
+				</section>
+			)}
 
 			{/* Recent journals */}
 			{data.recentJournals.length > 0 && (

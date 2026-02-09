@@ -1,6 +1,8 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 import { RootLayout } from "./routes/__root.js";
 import Dashboard from "./routes/index.js";
+import ProjectList from "./routes/projects.js";
+import ProjectDetail from "./routes/projects.$name.js";
 import JournalList from "./routes/journal.js";
 import JournalDetail from "./routes/journal.$date.js";
 import BlogList from "./routes/blog.js";
@@ -16,6 +18,18 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: Dashboard,
+});
+
+const projectsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/projects",
+  component: ProjectList,
+});
+
+const projectDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/projects/$name",
+  component: ProjectDetail,
 });
 
 const journalRoute = createRoute({
@@ -68,6 +82,8 @@ const settingsRoute = createRoute({
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
+  projectsRoute,
+  projectDetailRoute,
   journalRoute,
   journalDetailRoute,
   blogRoute,

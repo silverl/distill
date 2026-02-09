@@ -143,6 +143,40 @@ Raw sessions (.claude/, .codex/, .vermas/)
 - Optional deps: try/except with `_HAS_X` flag, define name in except block
 - Coverage target: 90%+
 
+## Web Dashboard
+
+The web dashboard lives in `web/` — Bun + Hono (server) + React + Tailwind + TanStack Router (frontend).
+
+### Port Convention (ENFORCED)
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Hono API server | **4321** | Default in `web/server/lib/config.ts`, CLI `--port` flag |
+| Vite dev server | **5173** | Only used during `bun run dev` (frontend HMR) |
+| Server tests | **3001** | Used in `web/server/__tests__/` via `setConfig()` |
+
+- The canonical API port is **4321**. All agents, scripts, and tools must use port 4321 for the API server.
+- Vite's dev proxy forwards `/api` requests from 5173 → 4321 (see `web/vite.config.ts`).
+- In production (`distill serve`), only port 4321 is exposed (Hono serves both API + static files).
+- Tests use port 3001 to avoid conflicts with running dev servers.
+- **Never** introduce new arbitrary ports. If you need a port, use one from the table above.
+
+### Web Commands
+
+```bash
+cd web && bun test server    # Run server tests
+cd web && bun test src       # Run frontend tests
+cd web && bun run build      # Build frontend (tsc + vite)
+cd web && bun run dev        # Dev mode (vite HMR on 5173 + API on 4321)
+```
+
+### Web Conventions
+
+- Zod schemas in `web/shared/schemas.ts` are the single source of truth for types
+- Biome v1.9 for formatting/linting (NOT v2)
+- `noUncheckedIndexedAccess` is enabled — null-coalesce optional fields
+- Tests must pass `NO_COLOR=1` env when invoking CLI (GitHub Actions sets `FORCE_COLOR`)
+
 ## Known Issues
 
 - `test_verify_all_kpis.py` depends on local data files and may fail in clean clones

@@ -754,8 +754,8 @@ def sessions_cmd(
         },
     }
 
-    # Output JSON
-    console.print(json.dumps(summary, indent=2))
+    # Output JSON (use print, not console.print, to avoid ANSI codes)
+    print(json.dumps(summary, indent=2))
 
 
 @app.command(name="journal")

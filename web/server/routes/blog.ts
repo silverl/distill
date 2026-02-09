@@ -1,54 +1,16 @@
 import { basename, join } from "node:path";
 import { Hono } from "hono";
-import {
-	BlogFrontmatterSchema,
-	BlogMemorySchema,
-	type BlogPost,
-	SaveMarkdownSchema,
-} from "../../shared/schemas.js";
+import { BlogFrontmatterSchema, BlogMemorySchema, SaveMarkdownSchema } from "../../shared/schemas.js";
 import { getConfig } from "../lib/config.js";
-import { listFiles, readJson, readMarkdown, writeMarkdown } from "../lib/files.js";
+import { readJson, readMarkdown, writeMarkdown } from "../lib/files.js";
 import { parseFrontmatter, reconstructMarkdown } from "../lib/frontmatter.js";
+import { collectBlogFiles, loadBlogPosts } from "../lib/loaders.js";
 
 const app = new Hono();
 
-async function collectBlogFiles(outputDir: string): Promise<string[]> {
-	const [weeklyFiles, thematicFiles] = await Promise.all([
-		listFiles(join(outputDir, "blog", "weekly"), /\.md$/),
-		listFiles(join(outputDir, "blog", "themes"), /\.md$/),
-	]);
-	return [...weeklyFiles, ...thematicFiles];
-}
-
 app.get("/api/blog/posts", async (c) => {
 	const { OUTPUT_DIR } = getConfig();
-	const [files, blogMemory] = await Promise.all([
-		collectBlogFiles(OUTPUT_DIR),
-		readJson(join(OUTPUT_DIR, "blog", ".blog-memory.json"), BlogMemorySchema),
-	]);
-
-	const posts: BlogPost[] = [];
-	for (const file of files) {
-		const raw = await readMarkdown(file);
-		if (!raw) continue;
-		const parsed = parseFrontmatter(raw, BlogFrontmatterSchema);
-		if (parsed) {
-			const slug = parsed.frontmatter.slug ?? basename(file, ".md");
-			const memoryPost = blogMemory?.posts.find((p) => p.slug === slug);
-			posts.push({
-				slug,
-				title: parsed.frontmatter.title ?? slug,
-				postType: parsed.frontmatter.post_type ?? "unknown",
-				date: parsed.frontmatter.date ?? "",
-				tags: parsed.frontmatter.tags,
-				themes: parsed.frontmatter.themes,
-				filename: basename(file),
-				platformsPublished: memoryPost?.platforms_published ?? [],
-			});
-		}
-	}
-
-	posts.sort((a, b) => b.date.localeCompare(a.date));
+	const posts = await loadBlogPosts(OUTPUT_DIR);
 	return c.json({ posts });
 });
 
@@ -81,6 +43,7 @@ app.get("/api/blog/posts/:slug", async (c) => {
 			date: parsed.frontmatter.date ?? "",
 			tags: parsed.frontmatter.tags,
 			themes: parsed.frontmatter.themes,
+			projects: parsed.frontmatter.projects,
 			filename: basename(match),
 			platformsPublished: memoryPost?.platforms_published ?? [],
 		},

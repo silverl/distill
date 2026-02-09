@@ -48,22 +48,62 @@ configRoutes.get("/api/config/sources", async (c) => {
 	const config = await readConfig(projectDir);
 
 	const sources = [
-		{ source: "rss", configured: true, label: "RSS Feeds" },
+		{
+			source: "rss",
+			configured: true,
+			label: "RSS Feeds",
+			description: "Subscribe to RSS/Atom feeds from blogs and news sites",
+			availability: "available" as const,
+		},
 		{
 			source: "browser",
 			configured: config.intake?.browser_history ?? false,
 			label: "Browser History",
+			description: "Ingest recent browsing history from Chrome and Safari",
+			availability: "available" as const,
 		},
 		{
 			source: "substack",
 			configured: (config.intake?.substack_blogs ?? []).length > 0,
 			label: "Substack",
+			description: "Follow Substack newsletters by URL",
+			availability: "available" as const,
 		},
-		{ source: "linkedin", configured: false, label: "LinkedIn" },
-		{ source: "twitter", configured: false, label: "Twitter/X" },
-		{ source: "reddit", configured: Boolean(config.reddit?.client_id), label: "Reddit" },
-		{ source: "youtube", configured: Boolean(config.youtube?.api_key), label: "YouTube" },
-		{ source: "gmail", configured: false, label: "Gmail" },
+		{
+			source: "linkedin",
+			configured: false,
+			label: "LinkedIn",
+			description: "Import from LinkedIn GDPR data export",
+			availability: "coming_soon" as const,
+		},
+		{
+			source: "twitter",
+			configured: false,
+			label: "Twitter/X",
+			description: "Import from X data export",
+			availability: "coming_soon" as const,
+		},
+		{
+			source: "reddit",
+			configured: false,
+			label: "Reddit",
+			description: "Ingest saved and upvoted posts via Reddit API",
+			availability: "coming_soon" as const,
+		},
+		{
+			source: "youtube",
+			configured: false,
+			label: "YouTube",
+			description: "Fetch liked videos and transcripts via YouTube API",
+			availability: "coming_soon" as const,
+		},
+		{
+			source: "gmail",
+			configured: false,
+			label: "Gmail",
+			description: "Ingest newsletter emails via Gmail API",
+			availability: "coming_soon" as const,
+		},
 	];
 
 	return c.json({ sources });

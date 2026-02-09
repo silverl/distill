@@ -5,12 +5,11 @@ import {
 	BlogMemorySchema,
 	BlogStateSchema,
 	type DashboardResponse,
-	JournalFrontmatterSchema,
 	UnifiedMemorySchema,
 } from "../../shared/schemas.js";
 import { getConfig } from "../lib/config.js";
 import { listFiles, readJson } from "../lib/files.js";
-import { parseFrontmatter } from "../lib/frontmatter.js";
+import { loadJournalEntries } from "../lib/loaders.js";
 
 const app = new Hono();
 
@@ -18,12 +17,12 @@ app.get("/api/dashboard", async (c) => {
 	const { OUTPUT_DIR } = getConfig();
 
 	// Load data files in parallel
-	const [memory, blogMemory, blogState, journalFiles, intakeFiles, seedsRaw, notesRaw] =
+	const [memory, blogMemory, blogState, journalEntries, intakeFiles, seedsRaw, notesRaw] =
 		await Promise.all([
 			readJson(join(OUTPUT_DIR, ".distill-memory.json"), UnifiedMemorySchema),
 			readJson(join(OUTPUT_DIR, "blog", ".blog-memory.json"), BlogMemorySchema),
 			readJson(join(OUTPUT_DIR, "blog", ".blog-state.json"), BlogStateSchema),
-			listFiles(join(OUTPUT_DIR, "journal"), /^journal-.*\.md$/),
+			loadJournalEntries(OUTPUT_DIR),
 			listFiles(join(OUTPUT_DIR, "intake"), /^intake-.*\.md$/),
 			readFile(join(OUTPUT_DIR, ".distill-seeds.json"), "utf-8").catch(() => "[]"),
 			readFile(join(OUTPUT_DIR, ".distill-notes.json"), "utf-8").catch(() => "[]"),
@@ -41,23 +40,32 @@ app.get("/api/dashboard", async (c) => {
 		activeNoteCount = notes.filter((n) => !n.used).length;
 	} catch {}
 
-	// Parse recent journals for metadata
-	const recentJournalFiles = journalFiles.slice(-5).reverse();
-	const recentJournals = [];
-	for (const file of recentJournalFiles) {
-		const raw = await readFile(file, "utf-8").catch(() => null);
-		if (!raw) continue;
-		const parsed = parseFrontmatter(raw, JournalFrontmatterSchema);
-		if (parsed) {
-			recentJournals.push({
-				date: parsed.frontmatter.date,
-				style: parsed.frontmatter.style,
-				sessionsCount: parsed.frontmatter.sessions_count,
-				durationMinutes: parsed.frontmatter.duration_minutes,
-				projects: parsed.frontmatter.projects,
-			});
+	// Journal entries are already sorted by date descending from loadJournalEntries
+	const recentJournals = journalEntries.slice(0, 5);
+
+	// Aggregate project stats across ALL journals
+	const projectStats = new Map<string, { lastSeen: string; count: number }>();
+	for (const j of journalEntries) {
+		for (const p of j.projects) {
+			const existing = projectStats.get(p);
+			if (!existing || j.date > existing.lastSeen) {
+				projectStats.set(p, {
+					lastSeen: j.date,
+					count: (existing?.count ?? 0) + 1,
+				});
+			} else {
+				existing.count++;
+			}
 		}
 	}
+	const activeProjects = [...projectStats.entries()]
+		.sort((a, b) => b[1].lastSeen.localeCompare(a[1].lastSeen))
+		.slice(0, 5)
+		.map(([name, stats]) => ({
+			name,
+			lastSeen: stats.lastSeen,
+			journalCount: stats.count,
+		}));
 
 	// Compute pending publish count: blog posts that have platforms NOT yet published
 	const allPlatforms = ["twitter", "linkedin", "reddit"];
@@ -77,10 +85,12 @@ app.get("/api/dashboard", async (c) => {
 	const statePosts = blogState?.posts ?? [];
 
 	const response: DashboardResponse = {
-		journalCount: journalFiles.length,
+		journalCount: journalEntries.length,
 		blogCount: statePosts.length,
 		intakeCount: intakeFiles.length,
 		pendingPublish,
+		projectCount: projectStats.size,
+		activeProjects,
 		recentJournals: recentJournals.map((j) => ({
 			date: j.date,
 			style: j.style ?? "dev-journal",

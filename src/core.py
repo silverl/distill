@@ -955,9 +955,7 @@ def _generate_weekly_posts(
             if platform_name == "postiz" and postiz_limit is not None:
                 current = postiz_counter[0] if postiz_counter else 0
                 if current >= postiz_limit:
-                    logger.info(
-                        "Postiz limit reached (%d), skipping %s", postiz_limit, slug
-                    )
+                    logger.info("Postiz limit reached (%d), skipping %s", postiz_limit, slug)
                     continue
 
             try:
@@ -1062,8 +1060,17 @@ def generate_intake(
         publishers = ["obsidian"]
 
     # Build config with all source-specific settings
+    # Merge explicit feed_urls with rss_feeds from .distill.toml
+    from distill.config import load_config as _load_distill_config
+
+    _distill_cfg = _load_distill_config()
+    _all_feeds = list(feed_urls or [])
+    for f in _distill_cfg.intake.rss_feeds:
+        if f and f not in _all_feeds:
+            _all_feeds.append(f)
+
     rss_config = RSSConfig(
-        feeds=feed_urls or [],
+        feeds=_all_feeds,
         feeds_file=feeds_file or "",
         opml_file=opml_file or "",
     )
@@ -1440,9 +1447,7 @@ def _generate_thematic_posts(
             if platform_name == "postiz" and postiz_limit is not None:
                 current = postiz_counter[0] if postiz_counter else 0
                 if current >= postiz_limit:
-                    logger.info(
-                        "Postiz limit reached (%d), skipping %s", postiz_limit, theme.slug
-                    )
+                    logger.info("Postiz limit reached (%d), skipping %s", postiz_limit, theme.slug)
                     continue
 
             try:
@@ -1554,9 +1559,7 @@ def _generate_reading_list_posts(
             if platform_name == "postiz" and postiz_limit is not None:
                 current = postiz_counter[0] if postiz_counter else 0
                 if current >= postiz_limit:
-                    logger.info(
-                        "Postiz limit reached (%d), skipping %s", postiz_limit, slug
-                    )
+                    logger.info("Postiz limit reached (%d), skipping %s", postiz_limit, slug)
                     continue
 
             try:

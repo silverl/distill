@@ -29,6 +29,8 @@ describe("GET /api/dashboard", () => {
 		expect(data).toHaveProperty("blogCount");
 		expect(data).toHaveProperty("intakeCount");
 		expect(data).toHaveProperty("pendingPublish");
+		expect(data).toHaveProperty("projectCount");
+		expect(data).toHaveProperty("activeProjects");
 		expect(data).toHaveProperty("recentJournals");
 		expect(data).toHaveProperty("activeThreads");
 		expect(data).toHaveProperty("seedCount");
@@ -62,5 +64,27 @@ describe("GET /api/dashboard", () => {
 		const data = await res.json();
 		// fixtures/notes.json has 1 unused note
 		expect(data.activeNoteCount).toBe(1);
+	});
+
+	test("returns project count and active projects", async () => {
+		const res = await app.request("/api/dashboard");
+		const data = await res.json();
+		// Journal fixture has projects: [distill, vermas]
+		expect(data.projectCount).toBe(2);
+		expect(data.activeProjects.length).toBeGreaterThan(0);
+		expect(data.activeProjects[0]).toHaveProperty("name");
+		expect(data.activeProjects[0]).toHaveProperty("lastSeen");
+		expect(data.activeProjects[0]).toHaveProperty("journalCount");
+	});
+
+	test("activeProjects are ordered by most recently seen first", async () => {
+		const res = await app.request("/api/dashboard");
+		const data = await res.json();
+		// Both distill and vermas appear in the 2026-02-09 fixture, so both have lastSeen = 2026-02-09
+		// They should both appear and be sorted by lastSeen descending
+		expect(data.activeProjects.length).toBe(2);
+		for (let i = 0; i < data.activeProjects.length - 1; i++) {
+			expect(data.activeProjects[i].lastSeen >= data.activeProjects[i + 1].lastSeen).toBe(true);
+		}
 	});
 });
