@@ -10,6 +10,7 @@ asserting rich content in formatted output. Covers:
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,12 @@ from pathlib import Path
 
 import pytest
 import yaml
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
 
 from distill.core import analyze, discover_sessions, generate_weekly_notes, parse_session_file
 from distill.formatters.obsidian import ObsidianFormatter
@@ -740,8 +747,8 @@ class TestAnalyzeSubcommand:
             cwd=tmp_path,
         )
 
-        assert result.returncode == 0, f"stderr: {result.stderr}"
-        assert "Analysis complete" in result.stdout
+        assert result.returncode == 0, f"stderr: {_strip_ansi(result.stderr)}"
+        assert "Analysis complete" in _strip_ansi(result.stdout)
 
         # Verify output artifacts
         session_files = list((output_dir / "sessions").glob("*.md"))
@@ -765,8 +772,8 @@ class TestAnalyzeSubcommand:
             cwd=tmp_path,
         )
 
-        assert result.returncode == 0, f"stderr: {result.stderr}"
-        assert "Analysis complete" in result.stdout
+        assert result.returncode == 0, f"stderr: {_strip_ansi(result.stderr)}"
+        assert "Analysis complete" in _strip_ansi(result.stdout)
 
     def test_analyze_exit_0_no_sessions(self, tmp_path: Path) -> None:
         """analyze exits 0 gracefully when no sessions are found."""
@@ -779,7 +786,7 @@ class TestAnalyzeSubcommand:
         )
 
         assert result.returncode == 0
-        assert "No session files found" in result.stdout
+        assert "No session files found" in _strip_ansi(result.stdout)
 
     def test_analyze_exit_1_invalid_format(self, tmp_path: Path) -> None:
         """analyze exits 1 for unsupported --format value."""
@@ -816,7 +823,7 @@ class TestAnalyzeSubcommand:
             cwd=tmp_path,
         )
 
-        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert result.returncode == 0, f"stderr: {_strip_ansi(result.stderr)}"
 
     def test_analyze_with_date_filter_future(
         self, rich_claude_history: Path, tmp_path: Path
@@ -833,17 +840,17 @@ class TestAnalyzeSubcommand:
         )
 
         assert result.returncode == 0
-        assert "No sessions found" in result.stdout
+        assert "No sessions found" in _strip_ansi(result.stdout)
 
     def test_analyze_help_exits_0(self, tmp_path: Path) -> None:
         """analyze --help exits 0."""
         result = _run_cli("analyze", "--help", cwd=tmp_path)
         assert result.returncode == 0
-        assert "analyze" in result.stdout.lower()
+        assert "analyze" in _strip_ansi(result.stdout).lower()
 
     def test_version_exits_clean(self, tmp_path: Path) -> None:
         """--version exits cleanly."""
         result = _run_cli("--version", cwd=tmp_path)
         # Typer may exit 0 or raise Exit(0)
         assert result.returncode in (0, 1)
-        assert "session-insights" in result.stdout or "0.1.0" in result.stdout
+        assert "session-insights" in _strip_ansi(result.stdout) or "0.1.0" in _strip_ansi(result.stdout)

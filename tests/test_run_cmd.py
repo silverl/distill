@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -10,6 +11,13 @@ import pytest
 from typer.testing import CliRunner
 
 from distill.cli import app
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
+
 
 runner = CliRunner(env={"NO_COLOR": "1", "FORCE_COLOR": None})
 
@@ -61,7 +69,7 @@ class TestRunCommand:
             ["run", "--output", str(output_dir), "--dir", str(output_dir)],
         )
         assert result.exit_code == 0
-        assert "Pipeline complete" in result.output
+        assert "Pipeline complete" in _strip_ansi(result.output)
         mock_discover.assert_called_once()
         mock_journal.assert_called_once()
         mock_intake.assert_called_once()
@@ -87,7 +95,7 @@ class TestRunCommand:
             ["run", "--output", str(output_dir), "--dir", str(output_dir), "--skip-sessions"],
         )
         assert result.exit_code == 0
-        assert "skipped" in result.output
+        assert "skipped" in _strip_ansi(result.output)
         mock_discover.assert_not_called()
         mock_journal.assert_not_called()
 
@@ -186,7 +194,7 @@ class TestRunCommand:
         assert result.exit_code == 0
         # Should still run intake and blog despite session error
         mock_intake.assert_called_once()
-        assert "error" in result.output.lower()
+        assert "error" in _strip_ansi(result.output).lower()
 
     @patch("distill.cli._discover_and_parse")
     @patch("distill.cli.generate_journal_notes")
@@ -263,4 +271,4 @@ class TestRunCommand:
             ["run", "--output", str(tmp_path), "--dir", str(tmp_path)],
         )
         assert result.exit_code == 0
-        assert "No journal entries yet" in result.output
+        assert "No journal entries yet" in _strip_ansi(result.output)

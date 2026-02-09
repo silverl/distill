@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -9,6 +10,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
 
 from distill.core import (
     AnalysisResult,
@@ -349,7 +356,7 @@ class TestCLIExitCodes:
         # Allow either 0 or 1 (typer raises Exit on version)
         assert result.returncode in (0, 1)
         # Should contain version info
-        assert "session-insights" in result.stdout or "0.1.0" in result.stdout
+        assert "session-insights" in _strip_ansi(result.stdout) or "0.1.0" in _strip_ansi(result.stdout)
 
     def test_cli_default_output(self, cli_path: Path, tmp_path: Path) -> None:
         """Test CLI exits cleanly when no sessions found in empty directory."""
@@ -393,4 +400,4 @@ class TestCLIExitCodes:
             env={**os.environ, "PYTHONPATH": str(cli_path.parents[2] / "src")},
         )
         assert result.returncode == 1
-        assert "Invalid date" in result.stdout or "Invalid date" in result.stderr or "Error" in result.stdout
+        assert "Invalid date" in _strip_ansi(result.stdout) or "Invalid date" in _strip_ansi(result.stderr) or "Error" in _strip_ansi(result.stdout)

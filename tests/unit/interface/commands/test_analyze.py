@@ -1,6 +1,7 @@
 """Tests for the sessions command (analyze sessions skeleton)."""
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -10,6 +11,12 @@ from typer.testing import CliRunner
 from distill.cli import app
 from distill.parsers.claude import ClaudeParser
 from distill.parsers.codex import CodexParser
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
 
 
 @pytest.fixture
@@ -80,8 +87,8 @@ class TestSessionsCommand:
         """Test that sessions --help works and shows expected options."""
         result = runner.invoke(app, ["sessions", "--help"])
         assert result.exit_code == 0
-        assert "--dir" in result.output
-        assert "json" in result.output.lower() or "summary" in result.output.lower()
+        assert "--dir" in _strip_ansi(result.output)
+        assert "json" in _strip_ansi(result.output).lower() or "summary" in _strip_ansi(result.output).lower()
 
     def test_sessions_empty_directory(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test sessions command with a directory containing no session files."""
@@ -89,7 +96,7 @@ class TestSessionsCommand:
         assert result.exit_code == 0
 
         # Parse the JSON output
-        output_data = json.loads(result.output)
+        output_data = json.loads(_strip_ansi(result.output))
         assert output_data["session_count"] == 0
         assert output_data["total_messages"] == 0
         assert output_data["date_range"]["start"] is None
@@ -103,7 +110,7 @@ class TestSessionsCommand:
         assert result.exit_code == 0
 
         # Parse the JSON output
-        output_data = json.loads(result.output)
+        output_data = json.loads(_strip_ansi(result.output))
 
         # Verify session counts
         assert output_data["session_count"] == 2
@@ -125,7 +132,7 @@ class TestSessionsCommand:
         assert result.exit_code == 0
 
         # This will raise an exception if the output is not valid JSON
-        output_data = json.loads(result.output)
+        output_data = json.loads(_strip_ansi(result.output))
 
         # Verify expected keys exist
         assert "session_count" in output_data
