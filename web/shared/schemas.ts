@@ -226,6 +226,32 @@ export const IntakeDetailSchema = z.object({
 	content: z.string(),
 });
 
+// --- Content Items (intake archive) ---
+
+export const ContentItemSchema = z.object({
+	id: z.string(),
+	url: z.string().default(""),
+	title: z.string().default(""),
+	excerpt: z.string().default(""),
+	word_count: z.number().default(0),
+	author: z.string().default(""),
+	site_name: z.string().default(""),
+	source: z.string(),
+	content_type: z.string().default("article"),
+	tags: z.array(z.string()).default([]),
+	topics: z.array(z.string()).default([]),
+	published_at: z.string().nullable().default(null),
+	saved_at: z.string().default(""),
+	metadata: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const ContentItemsResponseSchema = z.object({
+	date: z.string(),
+	item_count: z.number(),
+	items: z.array(ContentItemSchema),
+	available_sources: z.array(z.string()).default([]),
+});
+
 export const PublishQueueItemSchema = z.object({
 	slug: z.string(),
 	title: z.string(),
@@ -438,3 +464,5 @@ export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
 export type PipelineRunResponse = z.infer<typeof PipelineRunResponseSchema>;
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>;
 export type ProjectDetail = z.infer<typeof ProjectDetailSchema>;
+export type ContentItem = z.infer<typeof ContentItemSchema>;
+export type ContentItemsResponse = z.infer<typeof ContentItemsResponseSchema>;

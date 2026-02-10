@@ -1,12 +1,13 @@
 import { basename, join } from "node:path";
 import { Hono } from "hono";
 import {
+	ContentItemsResponseSchema,
 	type IntakeDigest,
 	IntakeFrontmatterSchema,
 	SaveMarkdownSchema,
 } from "../../shared/schemas.js";
 import { getConfig } from "../lib/config.js";
-import { listFiles, readMarkdown, writeMarkdown } from "../lib/files.js";
+import { listFiles, readJson, readMarkdown, writeMarkdown } from "../lib/files.js";
 import { parseFrontmatter, reconstructMarkdown } from "../lib/frontmatter.js";
 
 const app = new Hono();
@@ -89,6 +90,45 @@ app.put("/api/reading/digests/:date", async (c) => {
 	}
 
 	return c.json({ success: true });
+});
+
+app.get("/api/reading/items", async (c) => {
+	const { OUTPUT_DIR } = getConfig();
+	const dateParam = c.req.query("date");
+	const sourceParam = c.req.query("source");
+
+	// If no date, list available archive dates
+	if (!dateParam) {
+		const files = await listFiles(
+			join(OUTPUT_DIR, "intake", "archive"),
+			/^\d{4}-\d{2}-\d{2}\.json$/,
+		);
+		const dates = files
+			.map((f) => basename(f, ".json"))
+			.sort()
+			.reverse();
+		return c.json({ dates, items: [], item_count: 0, available_sources: [] });
+	}
+
+	const archivePath = join(OUTPUT_DIR, "intake", "archive", `${dateParam}.json`);
+	const archive = await readJson(archivePath, ContentItemsResponseSchema);
+
+	if (!archive) {
+		return c.json({ date: dateParam, item_count: 0, items: [], available_sources: [] });
+	}
+
+	// Compute available_sources from ALL items before filtering
+	const availableSources = [...new Set(archive.items.map((i) => i.source))].sort();
+
+	// Filter by source if requested
+	const items = sourceParam ? archive.items.filter((i) => i.source === sourceParam) : archive.items;
+
+	return c.json({
+		date: archive.date,
+		item_count: items.length,
+		items,
+		available_sources: availableSources,
+	});
 });
 
 export default app;

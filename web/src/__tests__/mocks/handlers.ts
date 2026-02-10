@@ -204,6 +204,52 @@ export const handlers = [
 		});
 	}),
 
+	http.get("/api/reading/items", ({ request }) => {
+		const url = new URL(request.url);
+		const source = url.searchParams.get("source");
+		const allItems = [
+			{
+				id: "rss-mock-1",
+				url: "https://example.com/article",
+				title: "Mock RSS Article",
+				excerpt: "A mock RSS article for testing.",
+				word_count: 1200,
+				author: "Test Author",
+				site_name: "example.com",
+				source: "rss",
+				content_type: "article",
+				tags: ["testing"],
+				topics: [],
+				published_at: "2026-02-09T08:00:00Z",
+				saved_at: "2026-02-09T10:00:00Z",
+				metadata: {},
+			},
+			{
+				id: "browser-mock-1",
+				url: "https://news.ycombinator.com/item?id=99",
+				title: "Mock Browser Page",
+				excerpt: "A page visited in the browser.",
+				word_count: 500,
+				author: "",
+				site_name: "news.ycombinator.com",
+				source: "browser",
+				content_type: "article",
+				tags: [],
+				topics: [],
+				published_at: null,
+				saved_at: "2026-02-09T14:00:00Z",
+				metadata: {},
+			},
+		];
+		const filtered = source ? allItems.filter((i) => i.source === source) : allItems;
+		return HttpResponse.json({
+			date: "2026-02-09",
+			item_count: filtered.length,
+			items: filtered,
+			available_sources: ["rss", "browser"],
+		});
+	}),
+
 	http.get("/api/reading/digests", () => {
 		return HttpResponse.json({
 			digests: [

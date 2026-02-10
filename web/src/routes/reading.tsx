@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import type { IntakeDigest, SeedIdea } from "../../shared/schemas.js";
+import type { ContentItemsResponse, IntakeDigest, SeedIdea } from "../../shared/schemas.js";
+import { ContentItemCard } from "../components/shared/ContentItemCard.js";
 import { DateBadge } from "../components/shared/DateBadge.js";
+import { SourceFilterPills } from "../components/shared/SourceFilterPills.js";
+
+type Tab = "items" | "digests";
 
 export default function Reading() {
 	const queryClient = useQueryClient();
 	const [newSeed, setNewSeed] = useState("");
+	const [activeTab, setActiveTab] = useState<Tab>("items");
+	const [filterSource, setFilterSource] = useState<string | null>(null);
 
 	const { data: digestsData } = useQuery<{ digests: IntakeDigest[] }>({
 		queryKey: ["reading"],
@@ -24,6 +30,22 @@ export default function Reading() {
 			if (!res.ok) throw new Error("Failed to load seeds");
 			return res.json();
 		},
+	});
+
+	const digests = digestsData?.digests ?? [];
+	const latestDate = digests[0]?.date ?? null;
+
+	const { data: itemsData } = useQuery<ContentItemsResponse>({
+		queryKey: ["reading-items", latestDate, filterSource],
+		queryFn: async () => {
+			const params = new URLSearchParams();
+			if (latestDate) params.set("date", latestDate);
+			if (filterSource) params.set("source", filterSource);
+			const res = await fetch(`/api/reading/items?${params.toString()}`);
+			if (!res.ok) throw new Error("Failed to load items");
+			return res.json();
+		},
+		enabled: activeTab === "items" && !!latestDate,
 	});
 
 	const addSeed = useMutation({
@@ -50,8 +72,9 @@ export default function Reading() {
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["seeds"] }),
 	});
 
-	const digests = digestsData?.digests ?? [];
 	const seeds = seedsData?.seeds ?? [];
+	const items = itemsData?.items ?? [];
+	const availableSources = itemsData?.available_sources ?? [];
 
 	return (
 		<div className="space-y-8">
@@ -110,33 +133,84 @@ export default function Reading() {
 				)}
 			</section>
 
-			{/* Digests section */}
-			<section>
-				<h3 className="mb-3 text-lg font-semibold">Intake Digests</h3>
-				{digests.length === 0 ? (
-					<p className="text-sm text-zinc-500">
-						No intake digests yet. Run <code>distill intake</code> to generate some.
-					</p>
-				) : (
-					<div className="space-y-2">
-						{digests.map((d) => (
-							<Link
-								key={d.filename}
-								to="/reading/$date"
-								params={{ date: d.date }}
-								className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-							>
-								<div className="flex items-center justify-between">
-									<DateBadge date={d.date} />
-									<span className="text-xs text-zinc-500">
-										{d.itemCount} items from {d.sources.length} sources
-									</span>
-								</div>
-							</Link>
-						))}
-					</div>
-				)}
-			</section>
+			{/* Tab bar */}
+			<div className="border-b border-zinc-200 dark:border-zinc-800">
+				<nav className="-mb-px flex gap-4" aria-label="Content tabs">
+					<button
+						type="button"
+						onClick={() => setActiveTab("items")}
+						className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
+							activeTab === "items"
+								? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+								: "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+						}`}
+					>
+						Items
+					</button>
+					<button
+						type="button"
+						onClick={() => setActiveTab("digests")}
+						className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
+							activeTab === "digests"
+								? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+								: "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+						}`}
+					>
+						Digests
+					</button>
+				</nav>
+			</div>
+
+			{/* Items tab */}
+			{activeTab === "items" && (
+				<section>
+					<SourceFilterPills
+						sources={availableSources}
+						filterSource={filterSource}
+						onFilterChange={setFilterSource}
+					/>
+					{items.length === 0 ? (
+						<p className="mt-4 text-sm text-zinc-500">
+							No content items yet. Run <code>distill intake</code> to ingest content.
+						</p>
+					) : (
+						<div className="mt-4 space-y-3">
+							{items.map((item) => (
+								<ContentItemCard key={item.id} item={item} />
+							))}
+						</div>
+					)}
+				</section>
+			)}
+
+			{/* Digests tab */}
+			{activeTab === "digests" && (
+				<section>
+					{digests.length === 0 ? (
+						<p className="text-sm text-zinc-500">
+							No intake digests yet. Run <code>distill intake</code> to generate some.
+						</p>
+					) : (
+						<div className="space-y-2">
+							{digests.map((d) => (
+								<Link
+									key={d.filename}
+									to="/reading/$date"
+									params={{ date: d.date }}
+									className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
+								>
+									<div className="flex items-center justify-between">
+										<DateBadge date={d.date} />
+										<span className="text-xs text-zinc-500">
+											{d.itemCount} items from {d.sources.length} sources
+										</span>
+									</div>
+								</Link>
+							))}
+						</div>
+					)}
+				</section>
+			)}
 		</div>
 	);
 }
